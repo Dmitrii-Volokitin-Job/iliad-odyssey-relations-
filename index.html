@@ -1,0 +1,1300 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Iliad &amp; Odyssey — Relationship Map</title>
+<script>
+(function(){
+  try{
+    var saved = localStorage.getItem('epicGraphTheme');
+    var theme = saved || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light':'dark');
+    document.documentElement.setAttribute('data-theme', theme);
+  }catch(e){}
+})();
+</script>
+<style>
+  :root{
+    --bg:#0e0b10; --bg2:#181319; --panel:#1c161d; --text:#f2e9d8; --muted:#a99a86;
+    --border:#3a2f34; --accent:#d9a650;
+    --god:#d9a650; --achaean:#c1440e; --trojan:#2f8a9c; --other:#8b5fbf;
+    --edge-family:#a99a86; --edge-love:#e2789a; --edge-ally:#7fbf9e; --edge-patron:#d9a650; --edge-enemy:#d1453d;
+    /* Карта всегда в классической "печатной" палитре — не зависит от тёмной/светлой темы сайта. */
+    --map-water:#aed3da; --map-land:#7e9b5e; --map-land-fill:#c7d6a0; --map-ink:#2b3a42;
+    --map-real:#c0392b; --map-legendary:#a33025; --map-paper:#f2ecd8; --map-muted:#4d5f57;
+    --shadow: 0 10px 30px rgba(0,0,0,.45);
+  }
+  [data-theme="light"]{
+    --bg:#f6efe0; --bg2:#efe4cc; --panel:#fffaf0; --text:#332a1f; --muted:#6b5c47;
+    --border:#ddccaa; --accent:#a8721f;
+    --god:#a8721f; --achaean:#a13a13; --trojan:#1f6b7a; --other:#6a4a96;
+    --edge-family:#8a7a60; --edge-love:#c65a7d; --edge-ally:#3f8f6a; --edge-patron:#a8721f; --edge-enemy:#b23328;
+    --shadow: 0 10px 24px rgba(80,60,20,.15);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;height:100%;}
+  body{
+    background:
+      radial-gradient(ellipse at 20% -10%, color-mix(in srgb, var(--god) 10%, transparent), transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font-family: 'Georgia', 'Iowan Old Style', 'Palatino Linotype', serif;
+    overflow:hidden;
+  }
+  .topbar{
+    position:fixed; top:0; left:0; right:0; height:64px; z-index:20;
+    display:flex; align-items:center; gap:16px; padding:0 20px;
+    background:color-mix(in srgb, var(--bg2) 92%, transparent);
+    border-bottom:1px solid var(--border);
+    backdrop-filter: blur(6px);
+  }
+  .topbar h1{
+    font-size:19px; margin:0; letter-spacing:.03em; white-space:nowrap;
+    font-variant: small-caps;
+  }
+  .topbar h1 small{display:block; font-size:11px; color:var(--muted); font-variant:normal; letter-spacing:.08em;}
+  .search-box{
+    flex:0 1 260px; position:relative;
+  }
+  .search-box input{
+    width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--border);
+    background:var(--panel); color:var(--text); font-family:inherit; font-size:14px;
+  }
+  .tabs{display:flex; gap:4px; flex:0 0 auto; background:var(--bg2); padding:3px; border-radius:9px; border:1px solid var(--border);}
+  .tab-btn{
+    border:none; background:transparent; color:var(--muted); padding:6px 14px; border-radius:6px;
+    cursor:pointer; font-size:13px; font-family:inherit;
+  }
+  .tab-btn.active{background:var(--accent); color:#1a1410; font-weight:bold;}
+  .filters{display:flex; gap:6px; flex-wrap:wrap; flex:1;}
+  .chip{
+    display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px;
+    border:1px solid var(--border); background:var(--panel); cursor:pointer; font-size:12.5px;
+    user-select:none; transition:opacity .15s, transform .1s;
+    color:var(--text);
+  }
+  .chip:active{transform:scale(.96);}
+  .chip .dot{width:9px; height:9px; border-radius:50%; display:inline-block;}
+  .chip.off{opacity:.35;}
+  .icon-btn{
+    border:1px solid var(--border); background:var(--panel); color:var(--text); width:36px; height:36px;
+    border-radius:8px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center;
+    flex:0 0 auto;
+  }
+  .stage{
+    position:absolute; inset:0; top:64px;
+  }
+  svg{width:100%; height:100%; display:block; cursor:grab;}
+  svg.panning{cursor:grabbing;}
+  .edge{fill:none; stroke-linecap:round;}
+  .edge.family{stroke:var(--edge-family); stroke-width:1.4;}
+  .edge.love{stroke:var(--edge-love); stroke-width:1.6; stroke-dasharray:1,5;}
+  .edge.ally{stroke:var(--edge-ally); stroke-width:1.3; stroke-dasharray:4,3;}
+  .edge.patron{stroke:var(--edge-patron); stroke-width:1.3; stroke-dasharray:6,4;}
+  .edge.enemy{stroke:var(--edge-enemy); stroke-width:1.7;}
+  .edge.dim{opacity:.12;}
+  .edge.lit{opacity:1; stroke-width:3;}
+  .map-bg{fill:var(--map-water);}
+  .map-grid{stroke:var(--map-ink); stroke-width:.6; stroke-dasharray:2,4; opacity:.25;}
+  .map-grain{fill:var(--map-ink); opacity:.05; mix-blend-mode:multiply;}
+  [data-theme="dark"] .map-grain, :root:not([data-theme="light"]) .map-grain{mix-blend-mode:overlay; opacity:.08;}
+  .map-frame-outer{fill:none; stroke:var(--map-ink); stroke-width:3; opacity:.55;}
+  .map-frame-inner{fill:none; stroke:var(--map-ink); stroke-width:1; opacity:.4;}
+  .map-land{fill:var(--map-land-fill); stroke:var(--map-land); stroke-width:1.6; stroke-linejoin:round;}
+  .map-land-shadow{fill:#000; opacity:.12;}
+  .compass{opacity:.7;}
+  .compass .ring{fill:none; stroke:var(--map-ink); stroke-width:1;}
+  .compass .needle{fill:var(--map-ink);}
+  .compass text{font-size:11px; fill:var(--map-ink); text-anchor:middle; font-style:italic;}
+  .route-arrow-fill{fill:var(--map-legendary);}
+  .map-route{fill:none; stroke:var(--map-legendary); stroke-width:2; stroke-dasharray:1,7; stroke-linecap:round; opacity:.85;}
+  .map-route-glow{fill:none; stroke:var(--map-legendary); stroke-width:6; opacity:.12;}
+  .label-chip{fill:var(--map-paper); opacity:.88; stroke:var(--map-ink); stroke-width:.6;}
+  .pin{cursor:pointer;}
+  .pin .pin-body{stroke:var(--map-paper); stroke-width:1.5px;}
+  .pin.real .pin-body{fill:var(--map-real);}
+  .pin.legendary .pin-body{fill:var(--map-legendary);}
+  .pin .pin-dot{fill:var(--map-paper);}
+  .pin:hover .pin-body{filter:brightness(1.2);}
+  .pin.lit .pin-body{filter:drop-shadow(0 0 8px currentColor); stroke:var(--accent); stroke-width:2.5px;}
+  .pin-num{font-size:10px; fill:var(--map-paper); font-weight:bold; text-anchor:middle; pointer-events:none;}
+  .pin-label{font-size:12.5px; fill:var(--map-ink); pointer-events:none; font-weight:bold;}
+  .pin-label.legendary-label{font-size:11px; font-weight:normal; font-style:italic;}
+  .map-title{font-size:16px; fill:var(--map-ink); letter-spacing:.08em; font-variant:small-caps; font-style:italic; font-weight:bold;}
+  .map-subtitle{font-size:10.5px; fill:var(--map-muted); letter-spacing:.04em;}
+  .map-cartouche{fill:var(--map-paper); stroke:var(--map-ink); stroke-width:1.4;}
+  .map-cartouche-title{font-size:14px; fill:var(--map-ink); font-weight:bold; font-variant:small-caps; letter-spacing:.05em;}
+  .map-cartouche-text{font-size:10px; fill:var(--map-muted); font-style:italic;}
+  .map-credit{font-size:9px; fill:var(--map-muted); opacity:.8;}
+  .node-label{
+    font-size:11.5px; fill:var(--text); pointer-events:none; font-family:inherit; paint-order:stroke;
+    stroke: var(--bg); stroke-width:3px; stroke-linejoin:round;
+  }
+  .node circle{stroke:var(--bg); stroke-width:2px; cursor:pointer; transition:filter .15s;}
+  .node.god circle{fill:var(--god);}
+  .node.achaean circle{fill:var(--achaean);}
+  .node.trojan circle{fill:var(--trojan);}
+  .node.other circle{fill:var(--other);}
+  .node.dim circle{opacity:.55;}
+  .node.dim .node-label{opacity:.45;}
+  .node.lit circle{filter:drop-shadow(0 0 8px currentColor); opacity:1;}
+  .node:hover circle{filter:brightness(1.25);}
+  .legend{
+    position:fixed; left:16px; bottom:16px; z-index:15; background:var(--panel); border:1px solid var(--border);
+    border-radius:10px; padding:12px 14px; font-size:12px; box-shadow:var(--shadow); max-width:220px;
+  }
+  .legend h3{margin:0 0 8px; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted);}
+  .legend-row{display:flex; align-items:center; gap:8px; margin:4px 0;}
+  .legend-line{width:22px; height:0; border-top-width:2px; border-top-style:solid; flex:0 0 auto;}
+  .panel{
+    position:fixed; right:0; top:64px; bottom:0; width:340px; max-width:90vw;
+    background:var(--panel); border-left:1px solid var(--border); z-index:18;
+    transform:translateX(100%); transition:transform .25s ease; overflow-y:auto;
+    box-shadow:var(--shadow);
+  }
+  .panel.open{transform:translateX(0);}
+  .panel-inner{padding:22px; padding-top:0;}
+  .panel-close{
+    position:absolute; top:14px; right:14px; border:none; background:rgba(0,0,0,.35); color:#fff; width:30px; height:30px;
+    border-radius:50%; font-size:16px; cursor:pointer; z-index:2;
+  }
+  .photo-wrap{
+    margin:0 -22px 16px; height:200px; overflow:hidden; background:var(--bg2);
+  }
+  .photo{width:100%; height:100%; object-fit:cover; object-position:center 20%; display:block;}
+  .panel .badge{
+    display:inline-block; font-size:11px; letter-spacing:.05em; text-transform:uppercase; padding:3px 9px;
+    border-radius:999px; color:#1a1410; margin-bottom:10px;
+  }
+  .panel h2{margin:0 0 2px; font-size:24px;}
+  .panel .epithet{color:var(--muted); font-style:italic; margin:0 0 14px;}
+  .panel p.bio{line-height:1.55; font-size:14.5px;}
+  .panel .src-line{font-size:11.5px; color:var(--muted); margin:10px 0 0; font-style:italic;}
+  .links-row{display:flex; flex-direction:column; gap:6px; margin-top:12px;}
+  .wiki-link{
+    font-size:12.5px; color:var(--accent); text-decoration:none; border:1px solid var(--border);
+    padding:6px 10px; border-radius:6px; display:inline-block;
+  }
+  .wiki-link:hover{background:var(--bg2);}
+  .hover-card{
+    position:fixed; z-index:60; display:none; align-items:stretch; width:240px;
+    background:var(--panel); border:1px solid var(--border); border-radius:10px; overflow:hidden;
+    box-shadow:var(--shadow); pointer-events:none;
+  }
+  .hover-card-img{width:76px; height:auto; object-fit:cover; flex:0 0 76px; background:var(--bg2);}
+  .hover-card-body{padding:9px 11px; display:flex; flex-direction:column; justify-content:center; min-width:0;}
+  .hover-card-name{font-weight:bold; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .hover-card-ep{font-size:11.5px; color:var(--muted); font-style:italic; margin-top:2px; line-height:1.3;}
+  .panel h4{font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:20px 0 8px; border-top:1px solid var(--border); padding-top:14px;}
+  .rel-item{
+    display:flex; justify-content:space-between; align-items:center; gap:8px; padding:8px 0;
+    border-bottom:1px dashed var(--border); cursor:pointer;
+  }
+  .rel-item:hover{color:var(--accent);}
+  .rel-item .rtype{font-size:10.5px; color:var(--muted); white-space:nowrap;}
+  .hint{
+    position:fixed; left:50%; bottom:14px; transform:translateX(-50%); z-index:15;
+    font-size:11.5px; color:var(--muted); background:var(--panel); border:1px solid var(--border);
+    padding:6px 14px; border-radius:999px; pointer-events:none; opacity:.9;
+  }
+  ::-webkit-scrollbar{width:8px;}
+  ::-webkit-scrollbar-thumb{background:var(--border); border-radius:4px;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <h1 id="appTitle">Iliad &amp; Odyssey<small id="appSubtitle">Map of heroes and gods</small></h1>
+  <div class="tabs">
+    <button class="tab-btn active" id="tabGraph">Relationship graph</button>
+    <button class="tab-btn" id="tabMap">World map</button>
+  </div>
+  <div class="search-box">
+    <input id="search" type="text" placeholder="Find a character… (e.g. Athena)" autocomplete="off">
+  </div>
+  <div class="filters" id="filters"></div>
+  <button class="icon-btn" id="langBtn" title="Switch language">RU</button>
+  <button class="icon-btn" id="themeBtn" title="Switch theme">◐</button>
+</div>
+
+<div class="stage" id="graphStage">
+  <svg id="svg" viewBox="0 0 1000 700">
+    <g id="viewport">
+      <g id="edges"></g>
+      <g id="nodes"></g>
+    </g>
+  </svg>
+</div>
+
+<div class="stage" id="mapStage" style="display:none;">
+  <svg id="mapSvg" viewBox="0 0 1000 700">
+    <g id="mapViewport"></g>
+  </svg>
+</div>
+
+<div class="legend" id="graphLegend">
+  <h3 id="legendGroupsTitle">Groups</h3>
+  <div class="legend-row"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:var(--god);display:inline-block;"></span><span id="legendGod">Gods</span></div>
+  <div class="legend-row"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:var(--achaean);display:inline-block;"></span><span id="legendAchaean">Achaeans (Greeks)</span></div>
+  <div class="legend-row"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:var(--trojan);display:inline-block;"></span><span id="legendTrojan">Trojans</span></div>
+  <div class="legend-row"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:var(--other);display:inline-block;"></span><span id="legendOther">Others (nymphs, monsters…)</span></div>
+  <h3 style="margin-top:12px;" id="legendRelationsTitle">Relations</h3>
+  <div class="legend-row"><span class="legend-line" style="border-color:var(--edge-family);"></span><span id="relFamily">family</span></div>
+  <div class="legend-row"><span class="legend-line" style="border-color:var(--edge-patron); border-top-style:dashed;"></span><span id="relPatron">patronage</span></div>
+  <div class="legend-row"><span class="legend-line" style="border-color:var(--edge-ally); border-top-style:dashed;"></span><span id="relAlly">alliance / friendship</span></div>
+  <div class="legend-row"><span class="legend-line" style="border-color:var(--edge-love); border-top-style:dotted;"></span><span id="relLove">love / captivity</span></div>
+  <div class="legend-row"><span class="legend-line" style="border-color:var(--edge-enemy);"></span><span id="relEnemy">conflict</span></div>
+  <p id="graphCredit" style="margin:10px 0 0;color:var(--muted);font-size:10px;line-height:1.4;">Character photos: Wikimedia Commons / Wikipedia (linked per character).</p>
+</div>
+
+<div class="legend" id="mapLegend" style="display:none;">
+  <h3 id="mapLegendTitle">Legend</h3>
+  <div class="legend-row"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:var(--map-real);display:inline-block;"></span><span id="mapLegendReal">real place</span></div>
+  <div class="legend-row"><span class="dot" style="width:11px;height:11px;border-radius:50%;background:var(--map-legendary);display:inline-block;"></span><span id="mapLegendLegendary">legendary, disputed location</span></div>
+  <p style="margin:10px 0 0;color:var(--muted);font-size:11.5px;line-height:1.4;" id="mapLegendNote">Odysseus's route (1–12) follows traditional, unproven identifications by ancient and modern commentators — the Odyssey's geography is deliberately fantastical.</p>
+</div>
+
+<div class="hint" id="hint">Click a node for details · drag to move · scroll to zoom</div>
+
+<div class="panel" id="panel">
+  <div class="panel-inner">
+    <button class="panel-close" id="panelClose">✕</button>
+    <div id="panelBody"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- Интернационализация (EN по умолчанию) ---------- */
+let lang = (function(){ try{ return localStorage.getItem('epicGraphLang') || 'en'; }catch(e){ return 'en'; } })();
+const UI = {
+  en: {
+    appTitle:'Iliad & Odyssey', appSubtitle:'Map of heroes and gods', pageTitle:'Iliad & Odyssey — Relationship Map',
+    searchPlaceholder:'Find a character… (e.g. Athena)', tabGraph:'Relationship graph', tabMap:'World map',
+    themeBtnTitle:'Switch theme', langBtnTitle:'Switch language',
+    hintGraph:'Click a node for details · drag to move · scroll to zoom',
+    hintMap:'Click a point for details about the place and its characters · scroll to zoom · drag background to pan',
+    legendGroupsTitle:'Groups', legendGod:'Gods', legendAchaean:'Achaeans (Greeks)', legendTrojan:'Trojans', legendOther:'Others (nymphs, monsters…)',
+    legendRelationsTitle:'Relations', relFamily:'family', relPatron:'patronage', relAlly:'alliance / friendship', relLove:'love / captivity', relEnemy:'conflict',
+    mapLegendTitle:'Legend', mapLegendReal:'real place', mapLegendLegendary:'legendary, disputed location',
+    mapLegendNote:"Odysseus's route (1–12) follows traditional, unproven identifications by ancient and modern commentators — the Odyssey's geography is deliberately fantastical.",
+    mapCartoucheTitle:'The World of Homer', mapCartoucheNote:'Iliad & Odyssey — Bronze-Age Aegean, illustrative reconstruction',
+    mapCredit:'Character photos: Wikimedia Commons / Wikipedia. Map style inspired by classic "World of Homer" atlases; coastlines are schematic, not surveyed.',
+    groupGod:'God', groupAchaean:'Achaean', groupTrojan:'Trojan', groupOther:'Other character',
+    sourcePrefix:'Source:', wikiLink:'Read on Wikipedia ↗', showOnMap:'Show on map:', relationsPrefix:'Relations',
+    charsHerePrefix:'Characters here', locReal:'Real place', locLegendary:'Legendary place',
+    mapRealTitle:'The Real World of the Iliad', mapRealSubtitle:'Mycenaean Greece and the Troad, 13th–12th c. BCE',
+    mapLegendaryTitle:"Odysseus's Legendary Journey Home", mapLegendarySubtitle:'per traditional, unproven identifications by commentators',
+    compassN:'N', compassS:'S', compassE:'E', compassW:'W',
+    graphCredit:'Character photos: Wikimedia Commons / Wikipedia (linked per character).',
+  },
+  ru: {
+    appTitle:'Илиада и Одиссея', appSubtitle:'Карта связей героев и богов', pageTitle:'Илиада и Одиссея — карта связей',
+    searchPlaceholder:'Найти персонажа… (например, Афина)', tabGraph:'Граф связей', tabMap:'Карта мира',
+    themeBtnTitle:'Сменить тему', langBtnTitle:'Сменить язык',
+    hintGraph:'Клик по узлу — подробности · перетаскивание — переместить · колесо — масштаб',
+    hintMap:'Клик по точке — подробности о месте и персонажах · колесо — масштаб · перетаскивание фона — панорама',
+    legendGroupsTitle:'Группы', legendGod:'Боги', legendAchaean:'Ахейцы (греки)', legendTrojan:'Троянцы', legendOther:'Прочие (нимфы, чудовища…)',
+    legendRelationsTitle:'Связи', relFamily:'родство', relPatron:'покровительство', relAlly:'союз / дружба', relLove:'любовь / плен', relEnemy:'вражда',
+    mapLegendTitle:'Обозначения', mapLegendReal:'реальное место', mapLegendLegendary:'легендарный, спорный локалитет',
+    mapLegendNote:'Маршрут Одиссея (1–12) дан по традиционным, но недоказанным отождествлениям античных и Нового времени комментаторов — география «Одиссеи» намеренно сказочна.',
+    mapCartoucheTitle:'Мир Гомера', mapCartoucheNote:'Илиада и Одиссея — бронзовый век Эгеиды, иллюстративная реконструкция',
+    mapCredit:'Фото персонажей: Wikimedia Commons / Wikipedia. Стиль карты вдохновлён классическими атласами «Мир Гомера»; береговые линии условны, не топографичны.',
+    groupGod:'Бог', groupAchaean:'Ахеец', groupTrojan:'Троянец', groupOther:'Другой персонаж',
+    sourcePrefix:'Источник:', wikiLink:'Читать в Википедии ↗', showOnMap:'Показать на карте:', relationsPrefix:'Связи',
+    charsHerePrefix:'Персонажи здесь', locReal:'Реальное место', locLegendary:'Легендарное место',
+    mapRealTitle:'Реальный мир «Илиады»', mapRealSubtitle:'Микенская Греция и Троада, XIII–XII вв. до н. э.',
+    mapLegendaryTitle:'Легендарный путь Одиссея домой', mapLegendarySubtitle:'по традиционным, но недоказанным отождествлениям комментаторов',
+    compassN:'С', compassS:'Ю', compassE:'В', compassW:'З',
+    graphCredit:'Фото персонажей: Wikimedia Commons / Wikipedia (ссылка у каждого персонажа).',
+  },
+};
+function t(key){ return (UI[lang] && UI[lang][key]) || UI.en[key] || key; }
+function nodeName(n){ return lang==='ru' ? n.name : n.nameEn; }
+function nodeEp(n){ return lang==='ru' ? n.ep : n.epEn; }
+function nodeBio(n){ return lang==='ru' ? n.bio : n.bioEn; }
+function nodeWiki(n){ return lang==='ru' ? n.wiki : n.wikiEn; }
+function edgeLabel(e){ return lang==='ru' ? e.label : e.labelEn; }
+function locName(l){ return lang==='ru' ? l.name : l.nameEn; }
+function locDesc(l){ return lang==='ru' ? l.desc : l.descEn; }
+function relTypeName(type){ return t('rel'+type.charAt(0).toUpperCase()+type.slice(1)); }
+function groupName(g){ return t('group'+g.charAt(0).toUpperCase()+g.slice(1)); }
+
+/* ---------- Данные ---------- */
+const NODES = [
+  {id:'zeus', name:'Зевс', nameEn:'Zeus', ep:'Отец богов и людей, владыка Олимпа', epEn:'Father of gods and men, lord of Olympus', g:'god', w:3, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%97%D0%B5%D0%B2%D1%81', wikiEn:'https://en.wikipedia.org/wiki/Zeus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/7b/Giove%2C_I_sec_dc%2C_con_parti_simulanti_il_bronzo_moderne_02.JPG/330px-Giove%2C_I_sec_dc%2C_con_parti_simulanti_il_bronzo_moderne_02.JPG', src:'Илиада; Одиссея',
+    bio:'Верховный бог греческого пантеона, царь Олимпа, сын Кроноса. Формально соблюдает нейтралитет в Троянской войне и запрещает остальным богам вмешиваться, но втайне от Геры выполняет просьбу Фетиды дать перевес троянцам, пока не будет искуплена обида Ахилла (Илиада, песнь I). В финале лично взвешивает на золотых весах судьбы Ахилла и Гектора, решая исход их поединка (песнь XXII). Отец огромного числа богов и героев — от Афины и Аполлона до Елены и Сарпедона; его благоволение или гнев определяют ход обеих поэм.',
+    bioEn:"The supreme god of the Greek pantheon, king of Olympus. He formally stays neutral in the Trojan War and forbids the other gods from interfering, but secretly grants Thetis's request to favor the Trojans until Achilles's honor is restored (Iliad, Book I). At the end he personally weighs the fates of Achilles and Hector on golden scales, deciding their duel. Father of countless gods and heroes -- from Athena and Apollo to Helen and Sarpedon -- his favor or wrath drives the plot of both epics."},
+  {id:'hera', name:'Гера', nameEn:'Hera', ep:'Царица богов', epEn:'Queen of the gods', g:'god', w:2, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%93%D0%B5%D1%80%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Hera', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Divinit%C3%A0_sul_tipo_della_hera_borghese%2C_copia_romana_da_originale_della_scuola_di_fidia%2C_da_tor_bovacciana_%28ostia%29%2C_inv._2246.JPG/330px-Divinit%C3%A0_sul_tipo_della_hera_borghese%2C_copia_romana_da_originale_della_scuola_di_fidia%2C_da_tor_bovacciana_%28ostia%29%2C_inv._2246.JPG', src:'Илиада',
+    bio:'Супруга и сестра Зевса, покровительница брака. Не может простить троянцам суд Париса, на котором не была признана прекраснейшей из богинь, и последовательно интригует в пользу ахейцев — вплоть до того, что обольщает Зевса на горе Ида, чтобы усыпить его бдительность и дать грекам передышку в бою (песнь XIV).',
+    bioEn:'Wife and sister of Zeus, patron of marriage. She cannot forgive the Trojans for the Judgment of Paris, in which she was not named fairest, and consistently schemes for the Achaeans -- even seducing Zeus on Mount Ida to distract him and buy the Greeks a respite in battle (Book XIV).'},
+  {id:'athena', name:'Афина', nameEn:'Athena', ep:'Богиня мудрости и войны', epEn:'Goddess of wisdom and war', g:'god', w:3, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D1%84%D0%B8%D0%BD%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Athena', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Mattei_Athena_Louvre_Ma530_n2.jpg/330px-Mattei_Athena_Louvre_Ma530_n2.jpg', src:'Илиада; Одиссея',
+    bio:'Рождена в полном вооружении из головы Зевса. Как и Гера, мстит троянцам за суд Париса. В «Илиаде» удерживает разъярённого Ахилла от убийства Агамемнона прямо на месте ссоры (песнь I) и вдохновляет Диомеда на подвиги, доходящие до ранения самого Ареса. В «Одиссее» становится главной покровительницей Одиссея и всей его семьи: направляет его через все испытания и наставляет взрослеющего Телемаха, принимая для этого облик старца Ментора — отсюда и современное слово «наставник».',
+    bioEn:"Born fully armed from the head of Zeus. Like Hera, she takes revenge on the Trojans for the Judgment of Paris. In the Iliad she restrains a furious Achilles from killing Agamemnon on the spot (Book I) and inspires Diomedes to feats that even wound Ares himself. In the Odyssey she becomes Odysseus's chief patron and that of his whole family, guiding him through every trial and mentoring the maturing Telemachus, often disguised as the old man Mentor -- the origin of that modern word."},
+  {id:'poseidon', name:'Посейдон', nameEn:'Poseidon', ep:'Бог морей и землетрясений', epEn:'God of the sea and earthquakes', g:'god', w:2, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%9F%D0%BE%D1%81%D0%B5%D0%B9%D0%B4%D0%BE%D0%BD', wikiEn:'https://en.wikipedia.org/wiki/Poseidon', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/0038MAN_Poseidon---Zeus.jpg/330px-0038MAN_Poseidon---Zeus.jpg', src:'Илиада; Одиссея',
+    bio:'Брат Зевса, властитель моря и колебатель земли. В «Илиаде» тайно помогает ахейцам, нарушая запрет Зевса на вмешательство богов. В «Одиссее» становится главным личным врагом Одиссея: узнав, что тот ослепил его сына-циклопа Полифема, насылает на героя бурю за бурей и обрекает на десятилетние скитания вместо обычных нескольких недель пути домой.',
+    bioEn:"Brother of Zeus, ruler of the sea. In the Iliad he secretly aids the Achaeans, defying Zeus's ban on divine interference. In the Odyssey he becomes Odysseus's personal nemesis: learning that Odysseus blinded his son, the Cyclops Polyphemus, he hurls storm after storm at the hero, turning a voyage of weeks into ten years of wandering."},
+  {id:'apollo', name:'Аполлон', nameEn:'Apollo', ep:'Бог-лучник, покровитель Трои', epEn:'Archer god, patron of Troy', g:'god', w:2, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%BF%D0%BE%D0%BB%D0%BB%D0%BE%D0%BD', wikiEn:'https://en.wikipedia.org/wiki/Apollo', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Italy-3104_-_Apollo_%285378415112%29.jpg/330px-Italy-3104_-_Apollo_%285378415112%29.jpg', src:'Илиада',
+    bio:'Бог света, музыки и пророчеств, сын Зевса и Лето. Поэма открывается его гневом: оскорблённый отказом Агамемнона вернуть пленницу Хрисеиду её отцу — своему жрецу Хрису, — он девять дней осыпает ахейский лагерь чумными стрелами (песнь I). Последовательно защищает Трою и лично Гектора, а по одной из версий именно он направляет стрелу Париса в единственное уязвимое место Ахилла — пятку.',
+    bioEn:"God of light, music, and prophecy, son of Zeus and Leto. The poem opens with his wrath: insulted by Agamemnon's refusal to return the captive Chryseis to her father, his own priest, he rains plague arrows on the Achaean camp for nine days (Book I). He consistently defends Troy and Hector, and by one account guides Paris's arrow to the single vulnerable spot on Achilles -- his heel."},
+  {id:'aphrodite', name:'Афродита', nameEn:'Aphrodite', ep:'Богиня любви и красоты', epEn:'Goddess of love and beauty', g:'god', w:2, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D1%84%D1%80%D0%BE%D0%B4%D0%B8%D1%82%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Aphrodite', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/MG-Paris-Aphrodite_of_Milos.jpg/330px-MG-Paris-Aphrodite_of_Milos.jpg', src:'Илиада',
+    bio:'Богиня любви, победившая в суде Париса, пообещав ему в награду любовь прекраснейшей женщины мира — Елены. С тех пор считает себя обязанной покровительствовать Парису и Трое в целом, а во время боёв под Троей даже сама выходит на поле битвы, чтобы спасти своего смертного сына Энея, и оказывается ранена Диомедом за это вмешательство.',
+    bioEn:'Goddess of love, winner of the Judgment of Paris, having promised him the love of the fairest woman in the world -- Helen. Ever since she feels bound to favor Paris and Troy as a whole, even stepping onto the battlefield herself to save her mortal son Aeneas, and is wounded by Diomedes for the interference.'},
+  {id:'ares', name:'Арес', nameEn:'Ares', ep:'Бог войны', epEn:'God of war', g:'god', w:1, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D1%80%D0%B5%D1%81', wikiEn:'https://en.wikipedia.org/wiki/Ares', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a1/%CE%9F_%CE%86%CF%81%CE%B7%CF%82_%28Borghese-%CE%9B%CE%BF%CF%8D%CE%B2%CF%81%CE%BF%CF%85%29.jpg/330px-%CE%9F_%CE%86%CF%81%CE%B7%CF%82_%28Borghese-%CE%9B%CE%BF%CF%8D%CE%B2%CF%81%CE%BF%CF%85%29.jpg', src:'Илиада',
+    bio:'Буйный и кровожадный бог открытой резни, в отличие от расчётливой Афины. Воодушевляет троянцев на битву, но не раз оказывается бит смертными при поддержке богов — в частности, Диомед ранит его копьём, направленным рукой Афины, и Арес с воем, слышным на весь фронт, вынужден бежать на Олимп.',
+    bioEn:"A reckless, bloodthirsty god of open slaughter, unlike the calculating Athena. He fires up the Trojans for battle, but is repeatedly bested by mortals with divine help -- notably wounded by Diomedes with a spear guided by Athena's hand, fleeing to Olympus with a howl heard across the whole front."},
+  {id:'hermes', name:'Гермес', nameEn:'Hermes', ep:'Вестник богов, проводник душ', epEn:'Messenger of the gods, guide of souls', g:'god', w:1, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%93%D0%B5%D1%80%D0%BC%D0%B5%D1%81', wikiEn:'https://en.wikipedia.org/wiki/Hermes', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9b/Hermes_Logios_Altemps_33.jpg/330px-Hermes_Logios_Altemps_33.jpg', src:'Илиада; Одиссея',
+    bio:'Ловкий вестник Олимпа и проводник душ умерших. По приказу Зевса тайно проводит старого царя Приама через весь ахейский лагерь прямо в шатёр Ахилла, чтобы тот мог выкупить тело сына (песнь XXIV). В «Одиссее» дважды приходит на помощь герою: вручает ему волшебное растение моли, защищающее от чар Цирцеи, а позже передаёт Калипсо приказ Зевса отпустить пленника.',
+    bioEn:"Olympus's nimble herald and guide of the dead. On Zeus's order he secretly leads the aged King Priam through the entire Achaean camp to Achilles's tent so he can ransom his son's body (Book XXIV). In the Odyssey he twice comes to the hero's aid: he gives him the magic herb moly that protects him from Circe's spell, and later delivers Zeus's order for Calypso to release her captive."},
+  {id:'hephaestus', name:'Гефест', nameEn:'Hephaestus', ep:'Бог-кузнец', epEn:'God of the forge', g:'god', w:1, loc:'olympus', wiki:'https://ru.wikipedia.org/wiki/%D0%93%D0%B5%D1%84%D0%B5%D1%81%D1%82', wikiEn:'https://en.wikipedia.org/wiki/Hephaestus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5f/Vulcan_by_Bertel_Thorvaldsen.jpg/330px-Vulcan_by_Bertel_Thorvaldsen.jpg', src:'Илиада',
+    bio:'Хромой бог огня и кузнечного ремесла, сброшенный в детстве с Олимпа за уродство. По мольбе морской богини Фетиды за одну ночь выковывает Ахиллу новые, непревзойдённые доспехи и знаменитый щит с изображением целого мира на нём (песнь XVIII) — взамен доспехов, снятых троянцами с погибшего Патрокла.',
+    bioEn:'The lame god of fire and smithcraft, cast down from Olympus in childhood for his deformity. At the plea of the sea goddess Thetis he forges Achilles new, unsurpassed armor overnight, including the famous shield depicting an entire world (Book XVIII) -- to replace the armor the Trojans stripped from the fallen Patroclus.'},
+  {id:'thetis', name:'Фетида', nameEn:'Thetis', ep:'Морская богиня, мать Ахилла', epEn:'Sea goddess, mother of Achilles', g:'other', w:2, wiki:'https://ru.wikipedia.org/wiki/%D0%A4%D0%B5%D1%82%D0%B8%D0%B4%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Thetis', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/af/Detail_Pioneer_Group_Louvre_G65.jpg/330px-Detail_Pioneer_Group_Louvre_G65.jpg', src:'Илиада',
+    bio:'Морская нимфа-нереида, выданная за смертного Пелея против воли (по пророчеству, её сын был бы сильнее отца — опасно, если отцом стал бы сам Зевс). Когда Агамемнон отнимает у Ахилла пленницу Брисеиду, именно Фетида по просьбе сына умоляет Зевса дать перевес троянцам, пока обида не будет искуплена (песнь I) — с этой сцены раскручивается весь сюжет поэмы. Позже упрашивает Гефеста выковать сыну новое оружие, зная, что тому суждено умереть под Троей молодым.',
+    bioEn:"A sea nymph, a Nereid, married off to the mortal Peleus against her will (a prophecy warned her son would surpass his father -- dangerous if the father were Zeus himself). When Agamemnon takes Achilles's captive Briseis, it is Thetis, at her son's request, who begs Zeus to favor the Trojans until the insult is redressed (Book I) -- the scene that sets the whole plot of the poem in motion. She later begs Hephaestus to forge her son new arms, knowing he is fated to die young at Troy."},
+  {id:'achilles', name:'Ахилл', nameEn:'Achilles', ep:'Величайший воин ахейцев', epEn:'Greatest warrior of the Achaeans', g:'achaean', w:3, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D1%85%D0%B8%D0%BB%D0%BB', wikiEn:'https://en.wikipedia.org/wiki/Achilles', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Achilles%2C_after_the_antique%2C_by_George_Rennie%2C_1826%2C_marble_-_Sculpture_Gallery%2C_Chatsworth_House_-_Derbyshire%2C_England_-_DSC03517.jpg/330px-Achilles%2C_after_the_antique%2C_by_George_Rennie%2C_1826%2C_marble_-_Sculpture_Gallery%2C_Chatsworth_House_-_Derbyshire%2C_England_-_DSC03517.jpg', src:'Илиада',
+    bio:'Сын смертного Пелея и морской богини Фетиды, самый грозный воин под Троей — по легенде, неуязвимый везде, кроме пятки, за которую мать держала его, окуная в воды Стикса. «Гнев Ахилла» из-за отнятой Агамемноном пленницы Брисеиды — заявленная тема самой первой строки «Илиады»: обиженный герой отказывается сражаться, и ахейцы несут тяжёлые потери. Лишь гибель ближайшего друга Патрокла заставляет его вернуться в бой, убить Гектора и надругаться над его телом, а затем — смягчиться и вернуть тело за выкуп старому Приаму.',
+    bioEn:"Son of the mortal Peleus and the sea goddess Thetis, the most fearsome warrior at Troy -- legend says invulnerable everywhere but the heel his mother held him by when dipping him in the river Styx. The 'wrath of Achilles' over the captive Briseis taken by Agamemnon is the announced theme of the Iliad's very first line: the offended hero refuses to fight, and the Achaeans suffer heavy losses. Only the death of his closest friend Patroclus brings him back to battle, where he kills Hector and desecrates his body, before relenting and returning it for ransom to the aged Priam."},
+  {id:'agamemnon', name:'Агамемнон', nameEn:'Agamemnon', ep:'Царь Микен, предводитель похода', epEn:'King of Mycenae, leader of the expedition', g:'achaean', w:2, loc:'mycenae', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%B3%D0%B0%D0%BC%D0%B5%D0%BC%D0%BD%D0%BE%D0%BD', wikiEn:'https://en.wikipedia.org/wiki/Agamemnon', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/65/Detail_Taleides_Painter_Louvre_F340.jpg/330px-Detail_Taleides_Painter_Louvre_F340.jpg', src:'Илиада',
+    bio:'Верховный командующий объединённым ахейским войском, царь Микен, старший брат Менелая. Его отказ вернуть пленницу Хрисеиду навлекает на лагерь чуму от Аполлона, а последующее решение забрать взамен Брисеиду — пленницу Ахилла — вызывает ссору, из-за которой величайший воин греков надолго выходит из боя. Властный и не всегда справедливый лидер, чья гордыня дорого обходится всему войску.',
+    bioEn:"Supreme commander of the combined Achaean army, king of Mycenae, elder brother of Menelaus. His refusal to return the captive Chryseis brings a plague from Apollo on the camp, and his subsequent decision to seize Briseis, Achilles's captive, in compensation triggers the quarrel that removes the Achaeans' greatest warrior from battle for a long stretch. A commanding but not always just leader whose pride costs the whole army dearly."},
+  {id:'menelaus', name:'Менелай', nameEn:'Menelaus', ep:'Царь Спарты', epEn:'King of Sparta', g:'achaean', w:1, loc:'sparta', wiki:'https://ru.wikipedia.org/wiki/%D0%9C%D0%B5%D0%BD%D0%B5%D0%BB%D0%B0%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Menelaus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Firenze-piazza_signoria_statue02.jpg/330px-Firenze-piazza_signoria_statue02.jpg', src:'Илиада',
+    bio:'Царь Спарты, младший брат Агамемнона и законный муж Елены. Похищение (или бегство) жены Парисом в Трою становится формальным поводом для сбора всех ахейских царей в поход — по клятве, некогда данной ими как отвергнутыми женихами Елены. В поэме сражается с Парисом в личном поединке, который прерывает вмешательство Афродиты.',
+    bioEn:"King of Sparta, younger brother of Agamemnon and the lawful husband of Helen. The abduction (or elopement) of his wife with Paris to Troy becomes the formal pretext for gathering all the Achaean kings on campaign, bound by an oath once sworn as Helen's rejected suitors. In the poem he duels Paris in single combat, a fight cut short by Aphrodite's intervention."},
+  {id:'odysseus', name:'Одиссей', nameEn:'Odysseus', ep:'Царь Итаки, хитроумный герой', epEn:'King of Ithaca, the resourceful hero', g:'achaean', w:3, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%9E%D0%B4%D0%B8%D1%81%D1%81%D0%B5%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Odysseus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/6/69/Odysseus_Tiresias_Cdm_Paris_422_n2.jpg/330px-Odysseus_Tiresias_Cdm_Paris_422_n2.jpg', src:'Илиада; Одиссея',
+    bio:'Царь Итаки, славящийся не силой, а хитроумием и красноречием — именно он придумывает уловку с Троянским конём, положившую конец десятилетней осаде. Главный герой «Одиссеи»: после падения Трои проводит ещё десять лет в пути домой, борясь с гневом Посейдона, чарами Цирцеи и Калипсо, чудовищами и, наконец, — с наглыми женихами, осадившими его собственный дом и жену Пенелопу.',
+    bioEn:"King of Ithaca, famed not for strength but for cunning and eloquence -- he is the one who devises the Trojan Horse, ending the ten-year siege. The hero of the Odyssey: after Troy's fall he spends another ten years getting home, battling Poseidon's wrath, the spells of Circe and Calypso, monsters, and finally the insolent suitors besieging his own house and wife, Penelope."},
+  {id:'patroclus', name:'Патрокл', nameEn:'Patroclus', ep:'Ближайший друг Ахилла', epEn:"Achilles's closest friend", g:'achaean', w:2, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%9F%D0%B0%D1%82%D1%80%D0%BE%D0%BA%D0%BB', wikiEn:'https://en.wikipedia.org/wiki/Patroclus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Wall_painting_-_Briseis_taken_away_from_Achilles_-_Pompeii_%28VI_8_5%29_-_Napoli_MAN_9105_-_03.jpg/330px-Wall_painting_-_Briseis_taken_away_from_Achilles_-_Pompeii_%28VI_8_5%29_-_Napoli_MAN_9105_-_03.jpg', src:'Илиада',
+    bio:'Соратник и самый близкий друг Ахилла с детских лет, воспитывавшийся с ним при дворе Пелея. Видя, что ахейцев теснят к самым кораблям, уговаривает Ахилла хотя бы одолжить ему доспехи, чтобы выйти в бой вместо него. Гибнет от руки Гектора при поддержке Аполлона (песнь XVI) — и именно эта смерть, а не судьба всего войска, заставляет Ахилла вернуться в сражение.',
+    bioEn:"Comrade and closest friend of Achilles since childhood, raised together at the court of Peleus. Seeing the Achaeans driven back to their very ships, he persuades Achilles to at least lend him his armor so he can go into battle in his place. He is killed by Hector with Apollo's aid (Book XVI) -- and it is this death, not the army's plight, that finally brings Achilles back into the war."},
+  {id:'ajax', name:'Аякс Теламонид', nameEn:'Ajax the Great', ep:'Второй воин после Ахилла', epEn:'Second only to Achilles', g:'achaean', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D1%8F%D0%BA%D1%81_%D0%92%D0%B5%D0%BB%D0%B8%D0%BA%D0%B8%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Ajax_the_Great', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Antimenes_Painter_-_Black-figure_Amphora_with_Ajax_Carrying_the_Dead_Achilles_-_Walters_4817_-_Side_A.jpg/330px-Antimenes_Painter_-_Black-figure_Amphora_with_Ajax_Carrying_the_Dead_Achilles_-_Walters_4817_-_Side_A.jpg', src:'Илиада',
+    bio:'Могучий и несокрушимо стойкий защитник ахейского лагеря, известный своим огромным, «как башня», щитом. Пока Ахилл не участвует в битве, именно Аякс становится главной опорой обороны у кораблей, в том числе в знаменитом поединке с самим Гектором, прерванном ночью по обоюдному согласию.',
+    bioEn:"A mighty, unshakeably steadfast defender of the Achaean camp, known for his huge, 'tower-like' shield. While Achilles refuses to fight, Ajax becomes the main pillar of the defense by the ships, including in a famous duel with Hector himself, broken off by mutual consent as night falls."},
+  {id:'diomedes', name:'Диомед', nameEn:'Diomedes', ep:'Отважный царь Аргоса', epEn:'Bold king of Argos', g:'achaean', w:1, loc:'argos', wiki:'https://ru.wikipedia.org/wiki/%D0%94%D0%B8%D0%BE%D0%BC%D0%B5%D0%B4', wikiEn:'https://en.wikipedia.org/wiki/Diomedes', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2e/Diomedes_Glyptothek_Munich_304_n2.jpg/330px-Diomedes_Glyptothek_Munich_304_n2.jpg', src:'Илиада',
+    bio:'Молодой, но один из самых доблестных ахейских героев. При прямой поддержке Афины совершает почти немыслимое — ранит на поле боя не только троянца Энея, но и самих богов Афродиту и Ареса. Также известен ночной разведывательной вылазкой в лагерь троянцев вместе с Одиссеем.',
+    bioEn:"Young but one of the most valiant Achaean heroes. With Athena's direct backing he achieves the nearly unthinkable -- wounding not only the Trojan Aeneas but the gods Aphrodite and Ares themselves on the battlefield. Also known for a night reconnaissance raid into the Trojan camp alongside Odysseus."},
+  {id:'nestor', name:'Нестор', nameEn:'Nestor', ep:'Мудрый старец, царь Пилоса', epEn:'Wise elder, king of Pylos', g:'achaean', w:1, loc:'pylos', wiki:'https://ru.wikipedia.org/wiki/%D0%9D%D0%B5%D1%81%D1%82%D0%BE%D1%80_(%D0%BC%D0%B8%D1%84%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D1%8F)', wikiEn:'https://en.wikipedia.org/wiki/Nestor_(mythology)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Sacrifice_Nestor_Pylos_Meleager_Painter_MAN.jpg/330px-Sacrifice_Nestor_Pylos_Meleager_Painter_MAN.jpg', src:'Илиада',
+    bio:'Старейший из ахейских вождей, царь Пилоса, переживший уже два поколения героев. Прямого участия в поединках почти не принимает, зато его долгие, полные примеров из прошлого речи не раз гасят назревающие ссоры между вождями — в том числе он тщетно пытается примирить Ахилла с Агамемноном в самом начале поэмы.',
+    bioEn:'The oldest of the Achaean leaders, king of Pylos, who has already outlived two generations of heroes. He takes almost no direct part in combat, but his long speeches, full of examples from the past, repeatedly defuse brewing quarrels among the chiefs -- including a vain attempt to reconcile Achilles and Agamemnon at the very start of the poem.'},
+  {id:'hector', name:'Гектор', nameEn:'Hector', ep:'Величайший воин Трои', epEn:'Greatest warrior of Troy', g:'trojan', w:3, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%93%D0%B5%D0%BA%D1%82%D0%BE%D1%80', wikiEn:'https://en.wikipedia.org/wiki/Hector', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a4/Hector_brought_back_to_Troy.jpg/330px-Hector_brought_back_to_Troy.jpg', src:'Илиада',
+    bio:'Старший сын Приама, главная опора обороны Трои и, в отличие от брата Париса, воплощение долга и ответственности перед городом. Убивает Патрокла в доспехах Ахилла, приняв его за самого Ахилла, а затем сам гибнет в поединке с обезумевшим от горя Ахиллом, который трижды обегает вокруг стен Трои, прежде чем настигнуть его (песнь XXII). Тело героя выкупает у Ахилла его престарелый отец Приам.',
+    bioEn:"Eldest son of Priam, the chief pillar of Troy's defense and, unlike his brother Paris, the embodiment of duty and responsibility to his city. He kills Patroclus, mistaking him for Achilles in his armor, and then falls himself in a duel with Achilles, maddened by grief, who circles the walls of Troy three times before catching him (Book XXII). His body is ransomed from Achilles by his aged father, Priam."},
+  {id:'paris', name:'Парис', nameEn:'Paris', ep:'Похититель Елены', epEn:'Abductor of Helen', g:'trojan', w:2, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%9F%D0%B0%D1%80%D0%B8%D1%81', wikiEn:'https://en.wikipedia.org/wiki/Paris_(mythology)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Paris_armour_Pomarici_Santomasi.jpg/330px-Paris_armour_Pomarici_Santomasi.jpg', src:'Илиада',
+    bio:'Сын Приама, в юности отданный на воспитание пастухам после пророчества о том, что он погубит Трою. Именно его суд трёх богинь (Геры, Афины и Афродиты) и последующее похищение Елены становятся глубинной причиной войны. В бою уступает Менелаю и явно избегает прямых столкновений с сильнейшими воинами, зато именно его стрела — по преданию, направленная рукой Аполлона, — наносит Ахиллу смертельную рану в пятку.',
+    bioEn:"Son of Priam, given as an infant to shepherds to raise after a prophecy that he would destroy Troy. His Judgment of the Three Goddesses and subsequent abduction of Helen are the deeper cause of the war. In combat he yields to Menelaus and clearly avoids the strongest warriors, yet it is his arrow -- tradition says guided by Apollo's hand -- that deals Achilles his mortal wound in the heel."},
+  {id:'priam', name:'Приам', nameEn:'Priam', ep:'Царь Трои', epEn:'King of Troy', g:'trojan', w:2, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%9F%D1%80%D0%B8%D0%B0%D0%BC', wikiEn:'https://en.wikipedia.org/wiki/Priam', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c6/Alexandr_Ivanov_005.jpg/330px-Alexandr_Ivanov_005.jpg', src:'Илиада',
+    bio:'Престарелый царь Трои, отец полусотни детей, включая Гектора, Париса и Кассандру. Кульминация его роли в поэме — ночной поход в одиночку через вражеский лагерь в шатёр Ахилла, чтобы на коленях умолять убийцу своего сына вернуть тело Гектора для погребения (песнь XXIV); эта сцена завершает «Илиаду» примирением через общее горе.',
+    bioEn:"The aged king of Troy, father of some fifty children, including Hector, Paris, and Cassandra. The climax of his role in the poem is a solitary night journey through the enemy camp to Achilles's tent, to beg on his knees for his son Hector's body for burial (Book XXIV) -- a scene that closes the Iliad in reconciliation through shared grief."},
+  {id:'andromache', name:'Андромаха', nameEn:'Andromache', ep:'Жена Гектора', epEn:"Hector's wife", g:'trojan', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%BD%D0%B4%D1%80%D0%BE%D0%BC%D0%B0%D1%85%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Andromache', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/21/Madrid_-_Andromaca_estatua.jpg/330px-Madrid_-_Andromaca_estatua.jpg', src:'Илиада',
+    bio:'Верная жена Гектора, чей отец и семь братьев уже убиты Ахиллом ещё до начала поэмы. Сцена её прощания с мужем у Скейских ворот, где маленький сын пугается отцовского шлема с конским хвостом, — одна из самых человечных и трогательных во всей «Илиаде» (песнь VI); Андромаха уже тогда предчувствует, что видит Гектора живым в последний раз.',
+    bioEn:"Hector's devoted wife, whose father and seven brothers were already killed by Achilles before the poem begins. Her farewell scene with her husband at the Scaean Gates, where their small son is frightened by his father's horsehair-crested helmet, is one of the most humane and moving in the whole Iliad (Book VI); Andromache already senses she is seeing Hector alive for the last time."},
+  {id:'helen', name:'Елена', nameEn:'Helen', ep:'Прекраснейшая из женщин', epEn:'The fairest of women', g:'trojan', w:2, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%95%D0%BB%D0%B5%D0%BD%D0%B0_%D0%9F%D1%80%D0%B5%D0%BA%D1%80%D0%B0%D1%81%D0%BD%D0%B0%D1%8F', wikiEn:'https://en.wikipedia.org/wiki/Helen_of_Troy', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Helen_and_Menelaos_Staatliche_Antikensammlungen_1383_cropped_glare_reduced_and_solid_white_background.png/330px-Helen_and_Menelaos_Staatliche_Antikensammlungen_1383_cropped_glare_reduced_and_solid_white_background.png', src:'Илиада',
+    bio:'Дочь Зевса и Леды, признанная прекраснейшей женщиной мира, жена Менелая, увезённая (по одной версии — бежавшая добровольно) в Трою с Парисом. Осознаёт себя причиной войны и тысяч смертей, что придаёт её немногим репликам в поэме горькую, самокритичную интонацию — она наблюдает за сражением со стен Трои вместе со старцем Приамом.',
+    bioEn:'Daughter of Zeus and Leda, acknowledged the fairest woman in the world, wife of Menelaus, carried off (or, in one version, fleeing willingly) to Troy with Paris. Aware that she is the cause of the war and thousands of deaths, her few lines in the poem carry a bitter, self-critical tone -- she watches the battle from the walls of Troy alongside the aged Priam.'},
+  {id:'aeneas', name:'Эней', nameEn:'Aeneas', ep:'Троянский герой, сын Афродиты', epEn:'Trojan hero, son of Aphrodite', g:'trojan', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%AD%D0%BD%D0%B5%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Aeneas', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Iapyx_removing_arrowhead_from_Aeneas.jpg/330px-Iapyx_removing_arrowhead_from_Aeneas.jpg', src:'Илиада',
+    bio:'Сын Афродиты и троянца Анхиса, один из немногих видных троянских героев, которым суждено пережить падение города (позже — герой уже римского эпоса «Энеида» Вергилия). В бою его дважды спасает вмешательство богов: сперва мать выносит его с поля боя раненым, затем Посейдон — несмотря на общую поддержку ахейцев — укрывает его от ярости Ахилла, зная, что роду Энея суждено выжить.',
+    bioEn:"Son of Aphrodite and the Trojan Anchises, one of the few prominent Trojan heroes fated to survive the city's fall (later the hero of Virgil's Roman epic, the Aeneid). Divine intervention saves him twice in battle: first his mother carries him wounded from the field, then Poseidon -- despite generally backing the Achaeans -- shields him from Achilles's fury, knowing Aeneas's line is destined to survive."},
+  {id:'cassandra', name:'Кассандра', nameEn:'Cassandra', ep:'Троянская пророчица', epEn:'Trojan prophetess', g:'trojan', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%9A%D0%B0%D1%81%D1%81%D0%B0%D0%BD%D0%B4%D1%80%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Cassandra', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/42/Cassandra1.jpeg/330px-Cassandra1.jpeg', src:'Илиада (упоминания)',
+    bio:'Дочь Приама, наделённая Аполлоном даром пророчества за отказ разделить с ним ложе бог проклял её: она видит будущее верно, но никто и никогда ей не верит. В «Илиаде» упоминается сравнительно немного, но её трагедия — обречённое знание о неизбежном падении Трои — нависает над всей поэмой; после взятия города становится военной добычей Агамемнона.',
+    bioEn:"Daughter of Priam, granted the gift of prophecy by Apollo in exchange for her love; when she refused him, the god cursed her so that she sees the truth of the future but is never believed. She appears comparatively rarely in the Iliad, but her tragedy -- certain knowledge of Troy's inevitable fall -- looms over the whole poem; after the city's capture she becomes Agamemnon's war prize."},
+  {id:'sarpedon', name:'Сарпедон', nameEn:'Sarpedon', ep:'Сын Зевса, царь ликийцев', epEn:'Son of Zeus, king of the Lycians', g:'trojan', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%A1%D0%B0%D1%80%D0%BF%D0%B5%D0%B4%D0%BE%D0%BD', wikiEn:'https://en.wikipedia.org/wiki/Sarpedon', img:'null', src:'Илиада',
+    bio:'Сын Зевса от смертной женщины, царь Ликии и предводитель союзного Трое отряда. Его гибель от руки Патрокла — один из самых пронзительных эпизодов поэмы: сам Зевс скорбит и проливает кровавый дождь по погибающему сыну, но не спасает его, подчиняясь общему порядку судьбы (песнь XVI).',
+    bioEn:'Son of Zeus by a mortal woman, king of Lycia and leader of a contingent allied with Troy. His death at the hands of Patroclus is one of the most poignant episodes of the poem: Zeus himself grieves and rains blood-red drops for his dying son, yet does not save him, bowing to the general order of fate (Book XVI).'},
+  {id:'glaucus', name:'Главк', nameEn:'Glaucus', ep:'Ликийский герой, друг Сарпедона', epEn:"Lycian hero, Sarpedon's friend", g:'trojan', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%93%D0%BB%D0%B0%D0%B2%D0%BA_(%D1%81%D1%8B%D0%BD_%D0%93%D0%B8%D0%BF%D0%BF%D0%BE%D0%BB%D0%BE%D1%85%D0%B0)', wikiEn:'https://en.wikipedia.org/wiki/Glaucus_(mythology)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/51/Diomedes_Glaucus_MAR_Gela.jpg/330px-Diomedes_Glaucus_MAR_Gela.jpg', src:'Илиада',
+    bio:'Ликийский союзник Трои и близкий соратник Сарпедона. Знаменит эпизодом на поле боя, где, встретившись с ахейцем Диомедом для поединка, вдруг узнаёт о старой дружбе их дедов — и вместо схватки герои обмениваются доспехами в знак гостеприимства (песнь VI), один из самых неожиданно мирных моментов «Илиады».',
+    bioEn:"A Lycian ally of Troy and close comrade of Sarpedon. Famous for a battlefield episode in which, facing the Achaean Diomedes in a duel, he suddenly learns of an old friendship between their grandfathers -- and instead of fighting, the two heroes exchange armor as a token of hospitality (Book VI), one of the Iliad's most unexpectedly peaceful moments."},
+  {id:'idomeneus', name:'Идоменей', nameEn:'Idomeneus', ep:'Царь Крита, ахейский военачальник', epEn:'King of Crete, Achaean commander', g:'achaean', w:1, loc:'crete', wiki:'https://ru.wikipedia.org/wiki/%D0%98%D0%B4%D0%BE%D0%BC%D0%B5%D0%BD%D0%B5%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Idomeneus_(son_of_Deucalion)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/ad/Le_retour_d%27Idom%C3%A9d%C3%A9e.JPG/330px-Le_retour_d%27Idom%C3%A9d%C3%A9e.JPG', src:'Илиада',
+    bio:'Царь Крита, один из опытных ахейских военачальников, приведший под Трою собственный флот. Один из немногих второстепенных вождей, доживших до конца войны и благополучно вернувшихся домой.',
+    bioEn:'King of Crete, one of the experienced Achaean commanders, who brought his own fleet to Troy. One of the few secondary leaders to survive the war and make it safely home.'},
+  {id:'antilochus', name:'Антилох', nameEn:'Antilochus', ep:'Сын Нестора, друг Ахилла', epEn:"Nestor's son, friend of Achilles", g:'achaean', w:1, loc:'pylos', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%BD%D1%82%D0%B8%D0%BB%D0%BE%D1%85', wikiEn:'https://en.wikipedia.org/wiki/Antilochus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a3/Neck-amphora_Antilochus_Louvre_G213.jpg/330px-Neck-amphora_Antilochus_Louvre_G213.jpg', src:'Илиада',
+    bio:'Юный сын старца Нестора, один из немногих, кого Ахилл после смерти Патрокла ещё подпускает близко к себе. Именно ему выпадает горькая обязанность принести Ахиллу весть о гибели Патрокла — при этом Антилох ещё и удерживает друга от отчаяния, боясь, что тот в горе покончит с собой.',
+    bioEn:"The young son of old Nestor, one of the few Achilles still allows close to him after Patroclus's death. It falls to him to bring Achilles the bitter news of Patroclus's death -- while also holding his friend back from despair, fearing he might take his own life in grief."},
+  {id:'automedon', name:'Автомедонт', nameEn:'Automedon', ep:'Возничий Ахилла', epEn:"Achilles's charioteer", g:'achaean', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%B2%D1%82%D0%BE%D0%BC%D0%B5%D0%B4%D0%BE%D0%BD%D1%82', wikiEn:'https://en.wikipedia.org/wiki/Automedon', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1e/Regnault%2C_Henri_-_Automedon_with_the_Horses_of_Achilles_-_1868_%282%29.jpg/330px-Regnault%2C_Henri_-_Automedon_with_the_Horses_of_Achilles_-_1868_%282%29.jpg', src:'Илиада',
+    bio:'Личный возничий и оруженосец Ахилла, управляющий его бессмертными конями Ксанфом и Балием. Правит колесницей и в последнем бою Патрокла, облачённого в доспехи Ахилла, — но не может предотвратить его гибель от рук Гектора при поддержке Аполлона.',
+    bioEn:"Achilles's personal charioteer and squire, driving his immortal horses Xanthus and Balius. He also drives the chariot in Patroclus's final battle, wearing Achilles's armor -- but cannot prevent his death at Hector's hands with Apollo's aid."},
+  {id:'briseis', name:'Брисеида', nameEn:'Briseis', ep:'Пленница Ахилла', epEn:"Achilles's captive", g:'other', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%91%D1%80%D0%B8%D1%81%D0%B5%D0%B8%D0%B4%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Briseis', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Wall_painting_-_Briseis_taken_away_from_Achilles_-_Pompeii_%28VI_8_5%29_-_Napoli_MAN_9105_-_03_%28Briseis_cropped%29.jpg/330px-Wall_painting_-_Briseis_taken_away_from_Achilles_-_Pompeii_%28VI_8_5%29_-_Napoli_MAN_9105_-_03_%28Briseis_cropped%29.jpg', src:'Илиада',
+    bio:'Пленница, доставшаяся Ахиллу как военная добыча после разорения одного из окрестных городов. Когда Агамемнон, вынужденный вернуть свою пленницу Хрисеиду, забирает Брисеиду себе взамен, это оскорбление личной чести и становится непосредственным поводом для «гнева Ахилла» — центральной темы поэмы (песнь I). Сам Ахилл впоследствии признаётся, что искренне горевал по ней не просто как по трофею.',
+    bioEn:"A captive who fell to Achilles as war spoil after the sack of a nearby town. When Agamemnon, forced to return his own captive Chryseis, seizes Briseis from Achilles instead, the insult to his personal honor becomes the direct trigger for the 'wrath of Achilles' -- the poem's central theme (Book I). Achilles himself later admits he genuinely grieved for her, not merely as a trophy."},
+  {id:'chryseis', name:'Хрисеида', nameEn:'Chryseis', ep:'Пленница Агамемнона', epEn:"Agamemnon's captive", g:'other', w:1, loc:'troy', wiki:'https://ru.wikipedia.org/wiki/%D0%A5%D1%80%D0%B8%D1%81%D0%B5%D0%B8%D0%B4%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Chryseis', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/f/fb/Chryses_Agamemnon_Louvre_K1.jpg/330px-Chryses_Agamemnon_Louvre_K1.jpg', src:'Илиада',
+    bio:'Дочь Хриса, жреца Аполлона, взятая в наложницы Агамемноном как военная добыча. Отказ Агамемнона принять выкуп и вернуть её отцу навлекает на ахейский лагерь девятидневную чуму от разгневанного Аполлона — с этого кризиса и начинается сюжет «Илиады»; в итоге Агамемнон вынужден её вернуть, но требует взамен Брисеиду у Ахилла.',
+    bioEn:"Daughter of Chryses, a priest of Apollo, taken as a concubine by Agamemnon as war spoil. Agamemnon's refusal to accept ransom and return her to her father brings a nine-day plague from the enraged Apollo on the Achaean camp -- the crisis that opens the Iliad's plot; Agamemnon is ultimately forced to give her back, but demands Briseis from Achilles in exchange."},
+  {id:'penelope', name:'Пенелопа', nameEn:'Penelope', ep:'Верная жена Одиссея', epEn:"Odysseus's faithful wife", g:'other', w:2, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%9F%D0%B5%D0%BD%D0%B5%D0%BB%D0%BE%D0%BF%D0%B0', wikiEn:'https://en.wikipedia.org/wiki/Penelope', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/2/20/Penelope-Homer-Odyssey-Project_Gutenberg_eText.jpg/330px-Penelope-Homer-Odyssey-Project_Gutenberg_eText.jpg', src:'Одиссея',
+    bio:'Царица Итаки, двадцать лет ждущая возвращения мужа — сперва десять лет войны, затем ещё десять лет его скитаний. Отваживает десятки настойчивых женихов, претендующих на её руку и итакийский престол, знаменитой хитростью: обещает выбрать жениха, как только довяжет погребальный саван свёкру Лаэрту, а по ночам тайно распускает сотканное за день. Символ супружеской верности во всей западной литературе.',
+    bioEn:"Queen of Ithaca, waiting twenty years for her husband's return -- ten years of war, then another ten of his wanderings. She fends off dozens of insistent suitors for her hand and the Ithacan throne with a famous ruse: she promises to choose a husband once she finishes weaving a burial shroud for her father-in-law Laertes, then secretly unravels each night's work. A symbol of marital fidelity across Western literature."},
+  {id:'telemachus', name:'Телемах', nameEn:'Telemachus', ep:'Сын Одиссея', epEn:"Odysseus's son", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%A2%D0%B5%D0%BB%D0%B5%D0%BC%D0%B0%D1%85', wikiEn:'https://en.wikipedia.org/wiki/Telemachus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/d/db/Telemachus_departing_from_Nestor_-_Henry_Howard_-_Project_Gutenberg_eText_13725.jpg/330px-Telemachus_departing_from_Nestor_-_Henry_Howard_-_Project_Gutenberg_eText_13725.jpg', src:'Одиссея',
+    bio:'Сын Одиссея и Пенелопы, был младенцем, когда отец уехал под Трою, и к началу «Одиссеи» — уже взрослеющий юноша, бессильно наблюдающий, как женихи разоряют дом матери. Под незримым руководством Афины отправляется в путешествие за вестями об отце, а по возвращении вместе с ним участвует в расправе над женихами.',
+    bioEn:"Son of Odysseus and Penelope, an infant when his father left for Troy and, by the start of the Odyssey, a young man forced to watch the suitors ruin his mother's household. Guided invisibly by Athena, he sets out on a journey for news of his father, and on his return joins him in the slaughter of the suitors."},
+  {id:'laertes', name:'Лаэрт', nameEn:'Laertes', ep:'Отец Одиссея', epEn:"Odysseus's father", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%9B%D0%B0%D1%8D%D1%80%D1%82_(%D0%BC%D0%B8%D1%84%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D1%8F)', wikiEn:'https://en.wikipedia.org/wiki/Laertes', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Odysseus3.jpg/330px-Odysseus3.jpg', src:'Одиссея',
+    bio:'Престарелый отец Одиссея, после отъезда сына удалившийся от дел в сельское поместье и живущий в горе и запустении. Одиссей узнаёт его лишь под самый конец поэмы, и именно эта тихая сцена воссоединения отца и сына завершает «Одиссею».',
+    bioEn:"The aged father of Odysseus, who withdrew after his son's departure to a rural estate, living in grief and neglect. Odysseus recognizes him only at the very end of the poem, and this quiet scene of father and son reunited closes the Odyssey."},
+  {id:'anticlea', name:'Антиклея', nameEn:'Anticlea', ep:'Мать Одиссея', epEn:"Odysseus's mother", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%BD%D1%82%D0%B8%D0%BA%D0%BB%D0%B5%D1%8F', wikiEn:'https://en.wikipedia.org/wiki/Anticlea', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Anticlea_in_the_Underworld.jpg/330px-Anticlea_in_the_Underworld.jpg', src:'Одиссея',
+    bio:'Мать Одиссея, умершая от тоски по сыну, так и не дождавшись его возвращения. Одиссей встречает её тень во время путешествия в царство мёртвых и с болью узнаёт от неё о судьбе дома — включая бесчинства женихов и верность Пенелопы (песнь XI).',
+    bioEn:"Odysseus's mother, who died of longing for her son without ever seeing him return. Odysseus meets her shade during his journey to the land of the dead and learns with anguish of his household's fate -- including the suitors' outrages and Penelope's fidelity (Book XI)."},
+  {id:'eumaeus', name:'Евмей', nameEn:'Eumaeus', ep:'Верный свинопас Одиссея', epEn:"Odysseus's loyal swineherd", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%95%D0%B2%D0%BC%D0%B5%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Eumaeus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Telemachus3511.gif/330px-Telemachus3511.gif', src:'Одиссея',
+    bio:'Старый и преданный слуга-свинопас в доме Одиссея. Даёт приют неузнанному, переодетому нищим хозяину, ещё не зная, кто перед ним, и остаётся одним из немногих слуг, сохранивших верность роду, — за что получает почётное место среди участников расправы над женихами.',
+    bioEn:"An old and devoted swineherd in Odysseus's household. He shelters his disguised, beggar-clad master without yet knowing who he is, and remains one of the few servants who stay loyal to the family -- earning an honored place among those who help slaughter the suitors."},
+  {id:'eurycleia', name:'Эвриклея', nameEn:'Eurycleia', ep:'Старая нянька Одиссея', epEn:"Odysseus's old nurse", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%AD%D0%B2%D1%80%D0%B8%D0%BA%D0%BB%D0%B5%D1%8F', wikiEn:'https://en.wikipedia.org/wiki/Eurycleia_(nurse_of_Odysseus)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/a/a9/Odysseus_and_Euryclea_by_Johann_Heinrich_Wilhelm_Tischbein.jpg/330px-Odysseus_and_Euryclea_by_Johann_Heinrich_Wilhelm_Tischbein.jpg', src:'Одиссея',
+    bio:'Старая нянька, воспитавшая и самого Одиссея, и позже его сына Телемаха. Моя ноги неузнанному страннику по приказу Пенелопы, узнаёт хозяина по старому шраму на бедре, полученному ещё в юности на охоте (песнь XIX) — один из самых знаменитых эпизодов «Одиссеи»; Одиссей заставляет её молчать, чтобы не выдать себя раньше времени.',
+    bioEn:"The old nurse who raised both Odysseus and, later, his son Telemachus. Washing the feet of the unrecognized stranger on Penelope's orders, she recognizes her master by an old scar on his thigh from a boyhood hunt (Book XIX) -- one of the most famous episodes in the Odyssey; Odysseus forces her to keep silent so as not to reveal himself too soon."},
+  {id:'calypso', name:'Калипсо', nameEn:'Calypso', ep:'Нимфа острова Огигия', epEn:'Nymph of the island of Ogygia', g:'other', w:1, loc:'ogygia', wiki:'https://ru.wikipedia.org/wiki/%D0%9A%D0%B0%D0%BB%D0%B8%D0%BF%D1%81%D0%BE', wikiEn:'https://en.wikipedia.org/wiki/Calypso_(mythology)', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/1/1a/Henri_Lehmann_-_Calypso%2C_1869.jpg/330px-Henri_Lehmann_-_Calypso%2C_1869.jpg', src:'Одиссея',
+    bio:'Прекрасная нимфа, семь лет удерживающая потерпевшего кораблекрушение Одиссея на своём уединённом острове, предлагая ему бессмертие и вечную молодость в обмен на то, чтобы он остался её мужем навсегда. Отпускает его лишь по прямому приказу Зевса, переданному через Гермеса.',
+    bioEn:"A beautiful nymph who keeps the shipwrecked Odysseus on her secluded island for seven years, offering him immortality and eternal youth if he will stay as her husband forever. She releases him only on Zeus's direct order, delivered through Hermes."},
+  {id:'circe', name:'Цирцея', nameEn:'Circe', ep:'Волшебница острова Эя', epEn:'Sorceress of the island of Aeaea', g:'other', w:1, loc:'circe_isle', wiki:'https://ru.wikipedia.org/wiki/%D0%9A%D0%B8%D1%80%D0%BA%D0%B0_(%D0%BC%D0%B8%D1%84%D0%BE%D0%BB%D0%BE%D0%B3%D0%B8%D1%8F)', wikiEn:'https://en.wikipedia.org/wiki/Circe', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Circe_coi_maiali%2C_III-II_secolo_ac.jpg/330px-Circe_coi_maiali%2C_III-II_secolo_ac.jpg', src:'Одиссея',
+    bio:'Могущественная колдунья, превращающая часть спутников Одиссея в свиней волшебным зельем. Благодаря противоядию от Гермеса Одиссей избегает её чар, вынуждает вернуть спутникам человеческий облик — и затем целый год остаётся её гостем, после чего она же наставляет его, как безопасно миновать сирен и пройти между Сциллой и Харибдой.',
+    bioEn:"A powerful sorceress who turns part of Odysseus's crew into swine with her magic potion. Thanks to Hermes's antidote, Odysseus resists her spell, forces her to restore his men to human form, and then remains her guest for a full year -- after which she advises him how to safely pass the Sirens and thread between Scylla and Charybdis."},
+  {id:'nausicaa', name:'Навсикая', nameEn:'Nausicaa', ep:'Царевна феаков', epEn:'Princess of the Phaeacians', g:'other', w:1, loc:'scheria', wiki:'https://ru.wikipedia.org/wiki/%D0%9D%D0%B0%D0%B2%D1%81%D0%B8%D0%BA%D0%B0%D1%8F', wikiEn:'https://en.wikipedia.org/wiki/Nausicaa', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/OdysseyNausikaa.png/330px-OdysseyNausikaa.png', src:'Одиссея',
+    bio:'Юная царевна феаков, дочь царя Алкиноя. Выйдя со служанками стирать бельё на берег, первой находит обнажённого, обессиленного кораблекрушением Одиссея, помогает ему и приводит во дворец отца — эпизод, полный лёгкой, невысказанной взаимной симпатии, которая, впрочем, ни к чему не приводит: Одиссей продолжает путь домой к Пенелопе.',
+    bioEn:"A young Phaeacian princess, daughter of King Alcinous. Going with her maids to wash laundry on the shore, she is the first to find the shipwrecked, exhausted Odysseus, helps him, and brings him to her father's palace -- an episode full of a light, unspoken mutual sympathy that ultimately leads nowhere, as Odysseus continues home to Penelope."},
+  {id:'alcinous', name:'Алкиной', nameEn:'Alcinous', ep:'Царь феаков', epEn:'King of the Phaeacians', g:'other', w:1, loc:'scheria', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%BB%D0%BA%D0%B8%D0%BD%D0%BE%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Alcinous', img:'null', src:'Одиссея',
+    bio:'Гостеприимный царь феаков, отец Навсикаи. Принимает потерпевшего кораблекрушение Одиссея с почестями, устраивает в его честь пир и игры, на котором тот наконец рассказывает историю всех своих странствий, а затем снаряжает корабль, доставляющий героя, наконец, на родную Итаку.',
+    bioEn:'The hospitable king of the Phaeacians, father of Nausicaa. He receives the shipwrecked Odysseus with honors, holds a feast and games in his name, at which the hero finally tells the story of all his wanderings, and then equips the ship that at last carries him home to Ithaca.'},
+  {id:'tiresias', name:'Тиресий', nameEn:'Tiresias', ep:'Слепой прорицатель', epEn:'The blind prophet', g:'other', w:1, loc:'underworld', wiki:'https://ru.wikipedia.org/wiki/%D0%A2%D0%B8%D1%80%D0%B5%D1%81%D0%B8%D0%B9', wikiEn:'https://en.wikipedia.org/wiki/Tiresias', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/8/87/Pietro_della_Vecchia_-_Tiresias_transformed_into_a_woman.jpg/330px-Pietro_della_Vecchia_-_Tiresias_transformed_into_a_woman.jpg', src:'Одиссея',
+    bio:'Легендарный слепой фиванский прорицатель, чью тень Одиссей вызывает и вопрошает в царстве мёртвых (песнь XI) — единственная среди душ умерших, что сохраняет разум и дар речи без питья жертвенной крови. Предсказывает герою гнев Посейдона, опасность искушения быками бога Гелиоса и — в самых общих чертах — обстоятельства его будущей смерти.',
+    bioEn:"The legendary blind Theban seer, whose shade Odysseus summons and questions in the land of the dead (Book XI) -- the only soul who retains reason and speech without drinking the sacrificial blood. He foretells the hero the wrath of Poseidon, the danger of Helios's cattle, and, in broad terms, the circumstances of his eventual death."},
+  {id:'polyphemus', name:'Полифем', nameEn:'Polyphemus', ep:'Циклоп, сын Посейдона', epEn:'Cyclops, son of Poseidon', g:'other', w:1, loc:'cyclopes', wiki:'https://ru.wikipedia.org/wiki/%D0%9F%D0%BE%D0%BB%D0%B8%D1%84%D0%B5%D0%BC', wikiEn:'https://en.wikipedia.org/wiki/Polyphemus', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Jakob_Jordaens_009.jpg/330px-Jakob_Jordaens_009.jpg', src:'Одиссея',
+    bio:'Одноглазый великан-людоед, сын Посейдона, запирающий Одиссея и его спутников в своей пещере и пожирающий часть команды. Одиссей опьяняет его вином, ослепляет раскалённым колом и хитро называет себя «Никто», чтобы соседи-циклопы не пришли на крик о помощи (песнь IX) — но, не удержавшись, на прощание выкрикивает своё настоящее имя, и это тщеславие навлекает на него гнев Посейдона на все оставшиеся годы странствий.',
+    bioEn:"A one-eyed, man-eating giant, son of Poseidon, who traps Odysseus and his companions in his cave and devours part of the crew. Odysseus gets him drunk on wine, blinds him with a heated stake, and cleverly calls himself 'Nobody' so the neighboring Cyclopes will not come to help (Book IX) -- but unable to resist, he shouts his real name as he flees, and this vanity brings Poseidon's wrath down on the rest of his wanderings."},
+  {id:'eurymachus', name:'Эвримах', nameEn:'Eurymachus', ep:'Один из женихов Пенелопы', epEn:"One of Penelope's suitors", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%95%D0%B2%D1%80%D0%B8%D0%BC%D0%B0%D1%85', wikiEn:'https://en.wikipedia.org/wiki/Eurymachus', img:'null', src:'Одиссея',
+    bio:'Один из самых речистых и внешне обходительных, но не менее наглых женихов, осаждающих дом Одиссея вместе с Антиноем. После гибели Антиноя пытается откупиться от вернувшегося хозяина и свалить всю вину на убитого сообщника — но Одиссей не щадит и его.',
+    bioEn:"One of the most eloquent and outwardly polished, yet no less insolent, of the suitors besieging Odysseus's house alongside Antinous. After Antinous's death he tries to buy off the returned master and blame his dead accomplice for everything -- but Odysseus shows him no mercy either."},
+  {id:'antinous', name:'Антиной', nameEn:'Antinous', ep:'Наглейший из женихов Пенелопы', epEn:"The boldest of Penelope's suitors", g:'other', w:1, loc:'ithaca', wiki:'https://ru.wikipedia.org/wiki/%D0%90%D0%BD%D1%82%D0%B8%D0%BD%D0%BE%D0%B9_(%D1%81%D1%8B%D0%BD_%D0%95%D0%B2%D0%BF%D0%B8%D1%84%D0%B0)', wikiEn:'https://en.wikipedia.org/wiki/Antinous_of_Ithaca', img:'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5e/Odysseus_from_Schwab_book_1.jpg/330px-Odysseus_from_Schwab_book_1.jpg', src:'Одиссея',
+    bio:'Самый дерзкий и жестокий из женихов, годами бесчинствующих в доме Одиссея в его отсутствие, проедающих его добро и замышляющих убить вернувшегося Телемаха. Первым падает от стрелы неузнанного нищего старика на пиру — это и есть переодетый Одиссей, начинающий с него расправу над всеми женихами (песнь XXII).',
+    bioEn:"The most insolent and cruel of the suitors who for years run riot in Odysseus's house in his absence, devouring his wealth and plotting to kill the returning Telemachus. He is the first to fall to the arrow of an unrecognized old beggar at the feast -- the disguised Odysseus, who begins the slaughter of all the suitors with him."}
+];
+
+const EDGES = [
+  ["zeus","hera","family","супруги — но постоянно враждуют из-за Троянской войны","spouses -- constantly at odds over the Trojan War"],
+  ["zeus","athena","family","отец — родилась из его головы в полном вооружении","father -- she sprang fully armed from his head"],
+  ["zeus","apollo","family","отец","father"],
+  ["zeus","ares","family","отец, хотя сам его недолюбливает за буйный нрав","father, though he dislikes Ares's violent temper"],
+  ["zeus","hermes","family","отец","father"],
+  ["zeus","aphrodite","family","отец (по одной из версий мифа)","father (in one version of the myth)"],
+  ["zeus","helen","family","отец, через земную женщину Леду","father, through the mortal woman Leda"],
+  ["zeus","sarpedon","family","отец; скорбит, но не спасает его от гибели по воле судьбы","father; grieves but does not save him from his fated death"],
+  ["zeus","thetis","ally","просит её не вмешивается сам, но выполняет её мольбу помочь сыну","does not intervene himself, but grants her plea to help her son"],
+  ["poseidon","polyphemus","family","отец; мстит Одиссею за ослепление сына","father; avenges Odysseus's blinding of his son"],
+  ["priam","hector","family","отец и сын, гордость и главная опора Трои","father and son, the pride and mainstay of Troy"],
+  ["priam","paris","family","отец и сын; неосторожно не погубил его в младенчестве, хотя было пророчество","father and son; failed to have him killed as an infant despite the prophecy"],
+  ["priam","cassandra","family","отец и дочь; не верит её пророчествам о гибели города","father and daughter; does not believe her prophecies of the city's doom"],
+  ["hector","andromache","family","супруги — сцена их прощания одна из самых трогательных в поэме","spouses -- their farewell scene is one of the most moving in the poem"],
+  ["aphrodite","aeneas","family","мать и сын; дважды спасает его в бою","mother and son; saves him twice in battle"],
+  ["odysseus","penelope","family","супруги, разлучённые на двадцать лет","spouses, separated for twenty years"],
+  ["odysseus","telemachus","family","отец и сын, воссоединившиеся уже взрослыми","father and son, reunited once Telemachus is grown"],
+  ["odysseus","laertes","family","отец и сын; трогательное узнавание в самом конце поэмы","father and son; a touching recognition at the very end of the poem"],
+  ["odysseus","anticlea","family","мать и сын; она умерла от тоски по нему, не дождавшись","mother and son; she died of grief for him before he returned"],
+  ["agamemnon","menelaus","family","братья, вместе возглавившие поход на Трою","brothers, who together led the expedition against Troy"],
+  ["antilochus","nestor","family","отец и сын","father and son"],
+  ["nausicaa","alcinous","family","отец и дочь, вместе принимающие Одиссея","father and daughter, together hosting Odysseus"],
+  ["paris","helen","love","похитил (или увёз с её согласия) в Трою — формальная причина войны","abducted her (or she went willingly) to Troy -- the formal cause of the war"],
+  ["menelaus","helen","love","законный муж, чья потеря собрала ахейский флот в поход","her lawful husband, whose loss assembled the Achaean fleet"],
+  ["aphrodite","helen","patron","наградила ею Париса как приз за суд трёх богинь","awarded her to Paris as the prize for the judgment of the three goddesses"],
+  ["calypso","odysseus","love","семь лет держит на своём острове, предлагая бессмертие взамен на брак","keeps him on her island for seven years, offering immortality in exchange for marriage"],
+  ["circe","odysseus","love","чарует, затем целый год делит с ним кров как гостеприимная возлюбленная","enchants him, then hosts him for a year as a welcoming lover"],
+  ["nausicaa","odysseus","love","проявляет нежную, невысказанную симпатию, помогая ему добраться домой","shows a gentle, unspoken affection while helping him get home"],
+  ["achilles","briseis","love","пленница и, по признанию самого Ахилла, искренне любимая женщина","his captive and, by his own admission, a woman he genuinely loved"],
+  ["agamemnon","chryseis","love","пленница, взятая в наложницы как военная добыча","his captive, taken as a concubine as war spoil"],
+  ["agamemnon","cassandra","love","после падения Трои становится его пленницей и наложницей","becomes his captive and concubine after the fall of Troy"],
+  ["apollo","cassandra","love","дал ей дар пророчества за обещанную любовь, а после отказа проклял — ей не верят","gave her prophecy in exchange for promised love, then cursed her when she refused -- no one believes her"],
+  ["achilles","patroclus","ally","неразлучные друзья с детства; смерть одного меняет судьбу другого","inseparable friends since childhood; one's death changes the other's fate"],
+  ["achilles","ajax","ally","соратники, вместе обороняющие лагерь, пока Ахилл не в духе для боя","comrades defending the camp together while Achilles refuses to fight"],
+  ["achilles","antilochus","ally","один из немногих, кому Ахилл доверяет в час горя по Патроклу","one of the few Achilles trusts in his grief over Patroclus"],
+  ["achilles","automedon","ally","возничий, управляющий его колесницей и бессмертными конями","his charioteer, driving his chariot and immortal horses"],
+  ["patroclus","automedon","ally","правит его колесницей в роковом последнем бою","drives his chariot in the fatal last battle"],
+  ["diomedes","odysseus","ally","напарники в дерзкой ночной разведке во вражеский лагерь","partners on a daring night raid into the enemy camp"],
+  ["diomedes","glaucus","ally","враги на поле боя, узнавшие о дружбе дедов и обменявшиеся доспехами вместо схватки","battlefield enemies who discover their grandfathers' friendship and exchange armor instead of fighting"],
+  ["nestor","agamemnon","ally","главный советник, не раз гасящий его вспышки гордыни","his chief adviser, repeatedly calming his outbursts of pride"],
+  ["idomeneus","agamemnon","ally","критский царь, приведший под Трою собственный флот в поддержку похода","the Cretan king who brought his own fleet to support the expedition"],
+  ["nestor","achilles","ally","тщетно пытается примирить его с Агамемноном в начале распри","tries in vain to reconcile him with Agamemnon at the start of their quarrel"],
+  ["telemachus","athena","ally","наставляет его в облике старца Ментора","guides him disguised as the old man Mentor"],
+  ["sarpedon","glaucus","ally","ликийские соратники, сражающиеся плечом к плечу за Трою","Lycian comrades fighting side by side for Troy"],
+  ["odysseus","eumaeus","ally","верный свинопас даёт приют неузнанному хозяину и позже сражается на его стороне","the loyal swineherd shelters his unrecognized master and later fights at his side"],
+  ["odysseus","eurycleia","ally","старая нянька узнаёт его по шраму и хранит тайну возвращения","his old nurse recognizes him by his scar and keeps his return a secret"],
+  ["telemachus","eurycleia","ally","нянчила и его в детстве, храня верность всей семье","nursed him too as a child, loyal to the whole family"],
+  ["odysseus","alcinous","ally","гостеприимный царь феаков снаряжает корабль, доставивший героя домой","the hospitable Phaeacian king equips the ship that finally brings the hero home"],
+  ["odysseus","tiresias","ally","его пророческий дух в царстве мёртвых предсказывает дальнейший путь героя","his prophetic shade in the underworld foretells the hero's onward journey"],
+  ["odysseus","circe","ally","после чар становится его советчицей, как безопасно миновать сирен и Харибду","after her spell, becomes his advisor on safely passing the Sirens and Charybdis"],
+  ["antinous","eurymachus","ally","заодно предводительствуют бесчинствами женихов в доме Одиссея","together lead the suitors' outrages in Odysseus's house"],
+  ["athena","odysseus","patron","неизменно направляет и защищает на всём его пути домой","constantly guides and protects him throughout his journey home"],
+  ["athena","achilles","patron","удерживает от убийства Агамемнона прямо во время ссоры","restrains him from killing Agamemnon in the middle of their quarrel"],
+  ["athena","diomedes","patron","вдохновляет на подвиги, включая ранение самих богов","inspires his feats, including wounding the gods themselves"],
+  ["hera","agamemnon","patron","поддерживает ахейцев из мести троянцам за суд Париса","supports the Achaeans out of revenge on the Trojans for the Judgment of Paris"],
+  ["apollo","hector","patron","защищает и укрепляет силы величайшего воина Трои","protects and strengthens Troy's greatest warrior"],
+  ["apollo","priam","patron","оберегает Трою, пока не пробил час её судьбы","protects Troy until its fated hour finally comes"],
+  ["apollo","chryseis","patron","мстит за оскорбление своего жреца, отца пленницы, моровой язвой","avenges the insult to his priest, her father, with a plague"],
+  ["aphrodite","paris","patron","наградила Еленой после суда трёх богинь","awarded him Helen after the judgment of the three goddesses"],
+  ["aphrodite","aeneas","patron","оберегает сына в бою, будучи ранена за это Диомедом","protects her son in battle, and is wounded by Diomedes for it"],
+  ["ares","hector","patron","воодушевляет на битву своей яростью","fires him up for battle with his own fury"],
+  ["hephaestus","achilles","patron","по мольбе его матери выковал новые доспехи и легендарный щит","at his mother's plea, forges new armor and the legendary shield"],
+  ["thetis","hephaestus","ally","упрашивает выковать сыну новое оружие взамен утраченного","pleads with him to forge new arms for her son to replace what was lost"],
+  ["thetis","achilles","family","мать, знающая о его обречённой на раннюю смерть судьбе","his mother, who knows he is fated to die young"],
+  ["hermes","priam","patron","тайно проводит к Ахиллу через весь вражеский лагерь","secretly guides him through the entire enemy camp to Achilles"],
+  ["hermes","odysseus","patron","даёт волшебное средство против чар Цирцеи","gives him the magic herb against Circe's spell"],
+  ["hermes","calypso","patron","передаёт приказ Зевса отпустить Одиссея с острова","delivers Zeus's order to release Odysseus from her island"],
+  ["achilles","hector","enemy","убивает в поединке за Патрокла и надругается над телом","kills him in single combat to avenge Patroclus, then desecrates his body"],
+  ["achilles","agamemnon","enemy","ссора из-за отнятой пленницы Брисеиды запускает сюжет поэмы","their quarrel over the seized captive Briseis sets the poem's plot in motion"],
+  ["hector","patroclus","enemy","убивает его в доспехах Ахилла при поддержке Аполлона","kills him, disguised in Achilles's armor, with Apollo's help"],
+  ["patroclus","sarpedon","enemy","убивает предводителя ликийцев, что вызывает скорбь самого Зевса","kills the Lycian leader, provoking Zeus's own grief"],
+  ["paris","achilles","enemy","смертельно ранит стрелой в единственное уязвимое место — пятку","fatally wounds him with an arrow in his one vulnerable spot -- the heel"],
+  ["poseidon","odysseus","enemy","мстит бурями за ослеплённого сына-циклопа на протяжении всего пути","torments him with storms throughout his voyage in revenge for his blinded Cyclops son"],
+  ["odysseus","polyphemus","enemy","опьяняет, ослепляет и хитро называет себя «Никто», спасаясь бегством","gets him drunk, blinds him, and cleverly calls himself 'Nobody' while escaping"],
+  ["odysseus","antinous","enemy","убивает первым при расправе над женихами","kills him first in the slaughter of the suitors"],
+  ["odysseus","eurymachus","enemy","убивает вторым, несмотря на попытки откупиться","kills him second, despite his attempts to buy his way out"],
+  ["antinous","penelope","enemy","годами осаждает, домогаясь руки и разоряя её дом","besieges her for years, demanding her hand and ruining her household"],
+  ["antinous","telemachus","enemy","замышляет убить вернувшегося наследника, чтобы устранить угрозу","plots to kill the returning heir to remove the threat"]
+];
+
+/* ---------- Подготовка графа ---------- */
+const byId = {}; NODES.forEach(n=>{ n.x = 500+(Math.random()-0.5)*300; n.y=350+(Math.random()-0.5)*300; n.vx=0; n.vy=0; byId[n.id]=n; });
+const edges = EDGES.map(([s,tgt,type,label,labelEn])=>({s:byId[s], t:byId[tgt], type, label, labelEn}));
+const neighborMap = {};
+NODES.forEach(n=>neighborMap[n.id]=[]);
+edges.forEach(e=>{ neighborMap[e.s.id].push({node:e.t, edge:e}); neighborMap[e.t.id].push({node:e.s, edge:e}); });
+
+/* ---------- Карта мира ---------- */
+const LOCATIONS = [
+  {id:'olympus', name:'Олимп', nameEn:'Mount Olympus', kind:'real', x:560, y:60,
+    desc:'Гора на севере Греции (2917 м), в мифологии — обитель двенадцати главных богов-олимпийцев. Реальная гора существует и сегодня на границе Фессалии и Македонии.',
+    descEn:'A mountain in northern Greece (2,917 m), home of the twelve Olympian gods in myth. The real mountain still stands today on the border of Thessaly and Macedonia.'},
+  {id:'troy', name:'Троя (Илион)', nameEn:'Troy (Ilion)', kind:'real', x:790, y:150,
+    desc:'Город в северо-западной Анатолии (совр. Турция, городище Гиссарлык), осаждённый ахейцами десять лет. Раскопки Генриха Шлимана в XIX веке подтвердили существование на этом месте нескольких сменявших друг друга бронзовых городов.',
+    descEn:"A city in northwestern Anatolia (modern Turkey, the Hisarlik mound) besieged by the Achaeans for ten years. Heinrich Schliemann's 19th-century excavations confirmed several successive Bronze Age cities on this site."},
+  {id:'mycenae', name:'Микены', nameEn:'Mycenae', kind:'real', x:610, y:260,
+    desc:'Столица Агамемнона на северо-востоке Пелопоннеса, богатейший центр бронзового века (знамениты Львиные ворота и золотые маски гробниц). Один из главных археологических аргументов в пользу исторического зерна Троянской войны.',
+    descEn:"Agamemnon's capital in the northeastern Peloponnese, a wealthy Bronze Age center famed for the Lion Gate and the gold death masks. One of the main archaeological arguments for a historical kernel behind the Trojan War."},
+  {id:'argos', name:'Аргос', nameEn:'Argos', kind:'real', x:555, y:300,
+    desc:'Древний город на северо-востоке Пелопоннеса, царство Диомеда — один из старейших непрерывно заселённых городов Европы.',
+    descEn:"An ancient city in the northeastern Peloponnese, Diomedes's kingdom -- one of the oldest continuously inhabited cities in Europe."},
+  {id:'sparta', name:'Спарта', nameEn:'Sparta', kind:'real', x:600, y:350,
+    desc:'Город в Лаконии на юге Пелопоннеса, царство Менелая и Елены. Впоследствии — знаменитый военный полис классической Греции.',
+    descEn:'A city in Laconia in the southern Peloponnese, the kingdom of Menelaus and Helen. Later famed as a great military polis of classical Greece.'},
+  {id:'pylos', name:'Пилос', nameEn:'Pylos', kind:'real', x:480, y:330,
+    desc:'Город на юго-западе Пелопоннеса, царство мудрого Нестора. Раскопанный «дворец Нестора» с архивом глиняных табличек линейного письма Б подтверждает существование здесь микенского центра.',
+    descEn:"A city in the southwestern Peloponnese, kingdom of the wise Nestor. The excavated 'Palace of Nestor', with its archive of Linear B tablets, confirms a Mycenaean center here."},
+  {id:'crete', name:'Крит', nameEn:'Crete', kind:'real', x:590, y:450,
+    desc:'Крупнейший остров Греции, царство Идоменея, родина более древней минойской цивилизации, предшествовавшей микенской.',
+    descEn:"Greece's largest island, Idomeneus's kingdom, and home of the older Minoan civilization that preceded the Mycenaean."},
+  {id:'ithaca', name:'Итака', nameEn:'Ithaca', kind:'real', x:340, y:290,
+    desc:'Небольшой остров в Ионическом море у западного побережья Греции, царство Одиссея — конечная цель всех его двадцати лет странствий.',
+    descEn:"A small island in the Ionian Sea off Greece's west coast, Odysseus's kingdom -- the final goal of his twenty years of wandering."},
+  {id:'ismarus', name:'1. Исмар', nameEn:'1. Ismarus', kind:'legendary', x:150, y:480,
+    desc:'Первая остановка на пути домой: город киконов, союзников Трои, который спутники Одиссея разграбили — а затем поплатились за промедление и жадность внезапной контратакой.',
+    descEn:"The first stop on the way home: a city of the Cicones, allies of Troy, which Odysseus's men plundered -- then paid for their delay and greed in a sudden counterattack."},
+  {id:'lotus', name:'2. Земля лотофагов', nameEn:'2. Land of the Lotus-Eaters', kind:'legendary', x:225, y:515,
+    desc:'Народ, питающийся сладким лотосом, вызывающим полное забвение родины. Часть спутников Одиссея, отведав его, отказывается плыть дальше и их приходится силой тащить обратно на корабль.',
+    descEn:"A people who live on the sweet lotus, which induces total forgetfulness of home. Some of Odysseus's men, having tasted it, refuse to sail on and must be dragged back to the ship by force."},
+  {id:'cyclopes', name:'3. Земля циклопов', nameEn:'3. Land of the Cyclopes', kind:'legendary', x:300, y:545,
+    desc:'Традиционно связывается с Сицилией. Здесь одноглазый людоед Полифем запирает Одиссея с частью команды в пещере — эпизод ослепления и хитрости с именем «Никто».',
+    descEn:"Traditionally linked to Sicily. Here the one-eyed man-eating Polyphemus traps Odysseus and part of his crew in his cave -- the episode of the blinding and the ruse of the name 'Nobody'."},
+  {id:'aeolia', name:'4. Эолия', nameEn:'4. Aeolia', kind:'legendary', x:380, y:515,
+    desc:'Плавучий остров бога ветров Эола, подарившего Одиссею мешок со всеми противными ветрами. У самой Итаки спутники из любопытства развязали его, и буря отнесла корабли обратно.',
+    descEn:'The floating island of Aeolus, god of the winds, who gives Odysseus a bag containing all the contrary winds. Within sight of Ithaca, his curious crew opens it, and the storm blows them all the way back.'},
+  {id:'laestrygonians', name:'5. Земля лестригонов', nameEn:'5. Land of the Laestrygonians', kind:'legendary', x:450, y:545,
+    desc:'Земля великанов-людоедов, забрасывающих камнями и топящих почти весь флот Одиссея — здесь он теряет все корабли, кроме своего собственного.',
+    descEn:'A land of cannibal giants who hurl boulders and sink almost the entire fleet -- here Odysseus loses every ship but his own.'},
+  {id:'circe_isle', name:'6. Эя (остров Цирцеи)', nameEn:"6. Aeaea (Circe's Island)", kind:'legendary', x:525, y:515,
+    desc:'Остров волшебницы Цирцеи (Кирки), превратившей часть спутников в свиней. Одиссей проводит здесь целый год, прежде чем колдунья указывает ему путь дальше — через царство мёртвых.',
+    descEn:'The island of the sorceress Circe, who turns part of the crew into swine. Odysseus spends a full year here before she directs him onward -- through the realm of the dead.'},
+  {id:'underworld', name:'7. Вход в Аид', nameEn:'7. The Gate of Hades', kind:'legendary', x:595, y:555,
+    desc:'На крайнем западе, у реки Океан, Одиссей вызывает тени умерших, включая прорицателя Тиресия и свою мать Антиклею, чтобы узнать о дальнейшей судьбе.',
+    descEn:'At the far west, by the river Ocean, Odysseus summons the shades of the dead, including the seer Tiresias and his own mother Anticlea, to learn of his fate.'},
+  {id:'sirens', name:'8. Остров сирен', nameEn:'8. Island of the Sirens', kind:'legendary', x:665, y:515,
+    desc:'Сирены завлекают моряков смертоносным пением. Одиссей залепляет уши команды воском, а себя велит привязать к мачте, чтобы услышать песнь и остаться в живых.',
+    descEn:"The Sirens lure sailors with deadly song. Odysseus plugs his crew's ears with wax and has himself bound to the mast so he alone can hear the song and survive."},
+  {id:'scylla_charybdis', name:'9. Скилла и Харибда', nameEn:'9. Scylla and Charybdis', kind:'legendary', x:735, y:545,
+    desc:'Узкий пролив (традиционно — Мессинский пролив между Сицилией и Италией) между шестиглавым чудовищем Скиллой и смертоносным водоворотом Харибдой. Одиссей жертвует шестью моряками Скилле, чтобы не погубить весь корабль в пучине.',
+    descEn:'A narrow strait (traditionally the Strait of Messina between Sicily and Italy) between the six-headed monster Scylla and the deadly whirlpool Charybdis. Odysseus sacrifices six sailors to Scylla rather than lose the whole ship to the whirlpool.'},
+  {id:'thrinacia', name:'10. Тринакия', nameEn:'10. Thrinacia', kind:'legendary', x:805, y:515,
+    desc:'Остров бога солнца Гелиоса со священными быками. Изголодавшиеся спутники Одиссея, вопреки предупреждению, забивают часть стада — и Зевс топит их корабль молнией на обратном пути.',
+    descEn:"The island of the sun god Helios and his sacred cattle. Starving, Odysseus's men defy his warning and slaughter some of the herd -- and Zeus sinks their ship with a thunderbolt on the way home."},
+  {id:'ogygia', name:'11. Огигия', nameEn:'11. Ogygia', kind:'legendary', x:865, y:465,
+    desc:'Уединённый остров нимфы Калипсо, где Одиссей, единственный выживший, проводит семь лет пленником её любви, прежде чем Гермес передаёт приказ Зевса его отпустить.',
+    descEn:"The secluded island of the nymph Calypso, where Odysseus, the sole survivor, spends seven years as a captive of her love before Hermes delivers Zeus's order to let him go."},
+  {id:'scheria', name:'12. Схерия', nameEn:'12. Scheria', kind:'legendary', x:790, y:410,
+    desc:'Земля мореходов-феаков (традиционно отождествляется с Керкирой/Корфу), где царевна Навсикая находит потерпевшего кораблекрушение Одиссея, а царь Алкиной устраивает пир и снаряжает корабль до Итаки.',
+    descEn:'The land of the seafaring Phaeacians (traditionally identified with Corcyra/Corfu), where the princess Nausicaa finds the shipwrecked Odysseus, and King Alcinous holds a feast and equips the ship that takes him to Ithaca.'}
+];
+const locById = {}; LOCATIONS.forEach(l=>locById[l.id]=l);
+const ROUTE_ORDER = ['troy','ismarus','lotus','cyclopes','aeolia','laestrygonians','circe_isle','underworld','sirens','scylla_charybdis','thrinacia','ogygia','scheria','ithaca'];
+
+/* ---------- Физика (force-directed) ---------- */
+const W=1000, H=700;
+function step(){
+  const REPULSE=2600, SPRING=0.02, SPRINGLEN=130, CENTER=0.0025, DAMP=0.86;
+  for(let i=0;i<NODES.length;i++){
+    const a=NODES[i];
+    if(a.fixed) continue;
+    let fx=0, fy=0;
+    for(let j=0;j<NODES.length;j++){
+      if(i===j) continue;
+      const b=NODES[j];
+      let dx=a.x-b.x, dy=a.y-b.y;
+      let d2=dx*dx+dy*dy; if(d2<1) d2=1;
+      const d=Math.sqrt(d2);
+      const f=REPULSE/d2;
+      fx += (dx/d)*f; fy += (dy/d)*f;
+    }
+    fx += (W/2 - a.x)*CENTER;
+    fy += (H/2 - a.y)*CENTER;
+    a.fx=fx; a.fy=fy;
+  }
+  edges.forEach(e=>{
+    let dx=e.t.x-e.s.x, dy=e.t.y-e.s.y;
+    let d=Math.sqrt(dx*dx+dy*dy)||1;
+    const f=(d-SPRINGLEN)*SPRING;
+    const ux=dx/d, uy=dy/d;
+    if(!e.s.fixed){ e.s.fx += ux*f; e.s.fy += uy*f; }
+    if(!e.t.fixed){ e.t.fx -= ux*f; e.t.fy -= uy*f; }
+  });
+  NODES.forEach(n=>{
+    if(n.fixed) return;
+    n.vx = (n.vx + n.fx*0.6) * DAMP;
+    n.vy = (n.vy + n.fy*0.6) * DAMP;
+    n.x += n.vx; n.y += n.vy;
+    n.x = Math.max(30, Math.min(W-30, n.x));
+    n.y = Math.max(30, Math.min(H-30, n.y));
+  });
+}
+
+/* ---------- Рендеринг ---------- */
+const svg = document.getElementById('svg');
+const edgesG = document.getElementById('edges');
+const nodesG = document.getElementById('nodes');
+const NS = 'http://www.w3.org/2000/svg';
+
+const radiusFor = n => 8 + n.w*4;
+
+const edgeEls = edges.map(e=>{
+  const el = document.createElementNS(NS,'path');
+  el.setAttribute('class', 'edge '+e.type);
+  el.dataset.s = e.s.id; el.dataset.t = e.t.id;
+  edgesG.appendChild(el);
+  el.addEventListener('mousemove', ev=>showEdgeTip(ev, e));
+  el.addEventListener('mouseleave', hideTip);
+  return el;
+});
+
+let tip;
+function ensureTip(){
+  if(!tip){
+    tip = document.createElement('div');
+    tip.style.cssText = 'position:fixed;pointer-events:none;background:var(--panel);border:1px solid var(--border);' +
+      'padding:6px 10px;border-radius:6px;font-size:12.5px;z-index:50;box-shadow:var(--shadow);max-width:240px;color:var(--text);';
+    document.body.appendChild(tip);
+  }
+  return tip;
+}
+function showEdgeTip(ev, e){
+  const tipEl = ensureTip();
+  tipEl.textContent = `${nodeName(e.s)} → ${nodeName(e.t)}: ${edgeLabel(e)}`;
+  tipEl.style.left = (ev.clientX+14)+'px'; tipEl.style.top=(ev.clientY+10)+'px'; tipEl.style.display='block';
+}
+function hideTip(){ if(tip) tip.style.display='none'; }
+
+let nodeCard, nodeCardImg, nodeCardName, nodeCardEp;
+function ensureNodeCard(){
+  if(!nodeCard){
+    nodeCard = document.createElement('div');
+    nodeCard.className = 'hover-card';
+    nodeCardImg = document.createElement('img'); nodeCardImg.className='hover-card-img'; nodeCardImg.loading='lazy'; nodeCardImg.decoding='async';
+    const body = document.createElement('div'); body.className='hover-card-body';
+    nodeCardName = document.createElement('div'); nodeCardName.className='hover-card-name';
+    nodeCardEp = document.createElement('div'); nodeCardEp.className='hover-card-ep';
+    body.append(nodeCardName, nodeCardEp);
+    nodeCard.append(nodeCardImg, body);
+    document.body.appendChild(nodeCard);
+  }
+  return nodeCard;
+}
+function showNodeCard(ev, n){
+  const card = ensureNodeCard();
+  if(n.img){ nodeCardImg.src = n.img; nodeCardImg.style.display=''; } else { nodeCardImg.style.display='none'; }
+  nodeCardName.textContent = nodeName(n);
+  nodeCardEp.textContent = nodeEp(n);
+  positionNodeCard(ev);
+  card.style.display = 'flex';
+}
+function positionNodeCard(ev){
+  if(!nodeCard || nodeCard.style.display==='none') return;
+  const pad = 16;
+  let left = ev.clientX + pad, top = ev.clientY + pad;
+  const maxLeft = window.innerWidth - 260, maxTop = window.innerHeight - 110;
+  if(left > maxLeft) left = ev.clientX - 220 - pad;
+  if(top > maxTop) top = maxTop;
+  nodeCard.style.left = left+'px'; nodeCard.style.top = top+'px';
+}
+function hideNodeCard(){ if(nodeCard) nodeCard.style.display='none'; }
+
+const nodeEls = {};
+NODES.forEach(n=>{
+  const g = document.createElementNS(NS,'g');
+  g.setAttribute('class', `node ${n.g}`);
+  g.dataset.id = n.id;
+  const c = document.createElementNS(NS,'circle');
+  c.setAttribute('r', radiusFor(n));
+  c.style.color = `var(--${n.g})`;
+  g.appendChild(c);
+  const label = document.createElementNS(NS,'text');
+  label.setAttribute('class','node-label');
+  label.setAttribute('text-anchor','middle');
+  label.textContent = nodeName(n);
+  g.appendChild(label);
+  nodesG.appendChild(g);
+  nodeEls[n.id] = {g};
+
+  let dragging=false, moved=false;
+  g.addEventListener('pointerdown', ev=>{
+    dragging=true; moved=false; n.fixed=true; g.setPointerCapture(ev.pointerId);
+    ev.stopPropagation();
+  });
+  g.addEventListener('pointermove', ev=>{
+    if(!dragging) return;
+    moved=true;
+    const pt = graphPanZoom.toCoords(ev.clientX, ev.clientY);
+    n.x = pt.x; n.y = pt.y; n.vx=0; n.vy=0;
+  });
+  window.addEventListener('pointerup', ev=>{
+    if(dragging){ dragging=false; n.fixed=false; if(!moved) selectNode(n.id); }
+  });
+  g.addEventListener('mouseenter', ev=>{ if(!selected) hoverPreview(n.id); showNodeCard(ev, n); });
+  g.addEventListener('mousemove', positionNodeCard);
+  g.addEventListener('mouseleave', ()=>{ if(!selected) clearHighlight(); hideNodeCard(); });
+});
+
+function render(){
+  edgeEls.forEach((el,i)=>{
+    const e = edges[i];
+    el.setAttribute('d', `M${e.s.x},${e.s.y} L${e.t.x},${e.t.y}`);
+  });
+  NODES.forEach(n=>{
+    nodeEls[n.id].g.setAttribute('transform', `translate(${n.x},${n.y})`);
+  });
+}
+
+function loop(){
+  step(); render();
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+
+/* ---------- Пан / зум (общая утилита для графа и карты) ---------- */
+function makePanZoom(svgEl, viewportEl){
+  const vb = {x:0, y:0, w:1000, h:700};
+  const aspect = vb.h / vb.w;
+  function apply(){ svgEl.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`); }
+  function toCoords(clientX, clientY){
+    const rect = svgEl.getBoundingClientRect();
+    return { x: vb.x + (clientX-rect.left)/rect.width*vb.w, y: vb.y + (clientY-rect.top)/rect.height*vb.h };
+  }
+  svgEl.addEventListener('wheel', ev=>{
+    ev.preventDefault();
+    const zoom = ev.deltaY>0 ? 1.08 : 0.92;
+    const pt = toCoords(ev.clientX, ev.clientY);
+    vb.w = Math.max(200, Math.min(2600, vb.w*zoom));
+    vb.h = vb.w*aspect;
+    vb.x = pt.x - (pt.x-vb.x)*zoom;
+    vb.y = pt.y - (pt.y-vb.y)*zoom;
+    apply();
+  }, {passive:false});
+  let panning=false, panStart=null;
+  svgEl.addEventListener('pointerdown', ev=>{
+    if(ev.target === svgEl || ev.target === viewportEl){
+      panning=true; panStart={x:ev.clientX,y:ev.clientY, vbx:vb.x, vby:vb.y};
+      svgEl.classList.add('panning');
+    }
+  });
+  window.addEventListener('pointermove', ev=>{
+    if(!panning) return;
+    const rect = svgEl.getBoundingClientRect();
+    vb.x = panStart.vbx - (ev.clientX-panStart.x)/rect.width*vb.w;
+    vb.y = panStart.vby - (ev.clientY-panStart.y)/rect.height*vb.h;
+    apply();
+  });
+  window.addEventListener('pointerup', ()=>{ panning=false; svgEl.classList.remove('panning'); });
+  apply();
+  return { vb, apply, toCoords };
+}
+
+const viewport = document.getElementById('viewport');
+const graphPanZoom = makePanZoom(svg, viewport);
+
+/* ---------- Выбор / подсветка ---------- */
+let selected = null;
+
+function clearHighlight(){
+  Object.values(nodeEls).forEach(({g})=>g.classList.remove('dim','lit'));
+  edgeEls.forEach(el=>el.classList.remove('dim','lit'));
+}
+
+function hoverPreview(id){
+  highlightAround(id);
+}
+
+function highlightAround(id){
+  const keep = new Set([id]);
+  neighborMap[id].forEach(x=>keep.add(x.node.id));
+  Object.entries(nodeEls).forEach(([nid,{g}])=>{
+    g.classList.toggle('dim', !keep.has(nid));
+    g.classList.toggle('lit', nid===id);
+  });
+  edgeEls.forEach((el,i)=>{
+    const e = edges[i];
+    const on = e.s.id===id || e.t.id===id;
+    el.classList.toggle('dim', !on);
+    el.classList.toggle('lit', on);
+  });
+}
+
+function selectNode(id){
+  selected = id;
+  selectedLocId = null;
+  highlightAround(id);
+  openPanel(id);
+}
+
+const panel = document.getElementById('panel');
+const panelBody = document.getElementById('panelBody');
+document.getElementById('panelClose').addEventListener('click', ()=>{
+  panel.classList.remove('open'); selected=null; selectedLocId=null; clearHighlight();
+  Object.values(locPinEls).forEach(el=>el.classList.remove('lit'));
+});
+
+function openPanel(id){
+  const n = byId[id];
+  panelBody.innerHTML = '';
+
+  if(n.img){
+    const photoWrap = document.createElement('div'); photoWrap.className='photo-wrap';
+    const img = document.createElement('img'); img.className='photo';
+    img.src = n.img; img.alt = nodeName(n); img.loading='lazy'; img.decoding='async';
+    photoWrap.appendChild(img);
+    panelBody.appendChild(photoWrap);
+  }
+
+  const badge = document.createElement('span');
+  badge.className='badge'; badge.style.background = `var(--${n.g})`;
+  badge.textContent = groupName(n.g);
+  const h2 = document.createElement('h2'); h2.textContent = nodeName(n);
+  const epithet = document.createElement('p'); epithet.className='epithet'; epithet.textContent = nodeEp(n);
+  const bio = document.createElement('p'); bio.className='bio'; bio.textContent = nodeBio(n);
+  panelBody.append(badge, h2, epithet, bio);
+
+  const srcLine = document.createElement('p'); srcLine.className='src-line';
+  srcLine.textContent = `${t('sourcePrefix')} ${n.src}`;
+  panelBody.appendChild(srcLine);
+
+  const linksRow = document.createElement('div'); linksRow.className='links-row';
+  const wikiLink = document.createElement('a');
+  wikiLink.href = nodeWiki(n); wikiLink.target='_blank'; wikiLink.rel='noopener noreferrer';
+  wikiLink.textContent = t('wikiLink');
+  wikiLink.className = 'wiki-link';
+  linksRow.appendChild(wikiLink);
+  if(n.loc && locById[n.loc]){
+    const mapLink = document.createElement('a');
+    mapLink.href = '#'; mapLink.className='wiki-link';
+    mapLink.textContent = `${t('showOnMap')} ${locName(locById[n.loc])} →`;
+    mapLink.addEventListener('click', ev=>{ ev.preventDefault(); showTab('map'); selectLocation(n.loc); });
+    linksRow.appendChild(mapLink);
+  }
+  panelBody.appendChild(linksRow);
+
+  const h4 = document.createElement('h4'); h4.textContent = `${t('relationsPrefix')} (${neighborMap[id].length})`;
+  panelBody.appendChild(h4);
+  neighborMap[id].forEach(rel=>{
+    const row = document.createElement('div'); row.className='rel-item';
+    const name = document.createElement('span'); name.textContent = nodeName(rel.node);
+    const type = document.createElement('span'); type.className='rtype';
+    type.textContent = `${relTypeName(rel.edge.type)} · ${edgeLabel(rel.edge)}`;
+    row.append(name, type);
+    row.addEventListener('click', ()=>selectNode(rel.node.id));
+    panelBody.appendChild(row);
+  });
+  panel.classList.add('open');
+}
+
+/* ---------- Фильтры ---------- */
+const GROUPS = ['god','achaean','trojan','other'];
+const activeGroups = new Set(GROUPS);
+const filtersEl = document.getElementById('filters');
+const chipLabelEls = {};
+GROUPS.forEach(gid=>{
+  const chip = document.createElement('div');
+  chip.className='chip';
+  const dot = document.createElement('span'); dot.className='dot'; dot.style.background = `var(--${gid})`;
+  const labelSpan = document.createElement('span');
+  labelSpan.textContent = t('legend'+gid.charAt(0).toUpperCase()+gid.slice(1));
+  chip.append(dot, labelSpan);
+  chipLabelEls[gid] = labelSpan;
+  chip.addEventListener('click', ()=>{
+    if(activeGroups.has(gid)){ activeGroups.delete(gid); chip.classList.add('off'); }
+    else { activeGroups.add(gid); chip.classList.remove('off'); }
+    applyFilter();
+  });
+  filtersEl.appendChild(chip);
+});
+function applyFilter(){
+  NODES.forEach(n=>{
+    const on = activeGroups.has(n.g);
+    nodeEls[n.id].g.style.display = on ? '' : 'none';
+  });
+  edgeEls.forEach((el,i)=>{
+    const e = edges[i];
+    const on = activeGroups.has(e.s.g) && activeGroups.has(e.t.g);
+    el.style.display = on ? '' : 'none';
+  });
+}
+
+/* ---------- Поиск ---------- */
+document.getElementById('search').addEventListener('input', ev=>{
+  const q = ev.target.value.trim().toLowerCase();
+  if(!q){ if(!selected) clearHighlight(); return; }
+  const match = NODES.find(n=>n.name.toLowerCase().startsWith(q));
+  if(match){
+    highlightAround(match.id);
+    graphPanZoom.vb.x = match.x - graphPanZoom.vb.w/2; graphPanZoom.vb.y = match.y - graphPanZoom.vb.h/2;
+    graphPanZoom.apply();
+  }
+});
+document.getElementById('search').addEventListener('keydown', ev=>{
+  if(ev.key==='Enter'){
+    const q = ev.target.value.trim().toLowerCase();
+    const match = NODES.find(n=>n.name.toLowerCase().startsWith(q));
+    if(match) selectNode(match.id);
+  }
+});
+
+/* ---------- Карта: рендер ---------- */
+const mapSvg = document.getElementById('mapSvg');
+const mapViewport = document.getElementById('mapViewport');
+const charsByLoc = {};
+NODES.forEach(n=>{ if(n.loc){ (charsByLoc[n.loc] = charsByLoc[n.loc]||[]).push(n); } });
+
+/* Плавная замкнутая кривая (Catmull-Rom → Bezier) через набор точек — рисует берег живее, чем эллипс. */
+function smoothClosedPath(pts){
+  const n = pts.length;
+  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} `;
+  for(let i=0;i<n;i++){
+    const p0=pts[(i-1+n)%n], p1=pts[i], p2=pts[(i+1)%n], p3=pts[(i+2)%n];
+    const c1x=p1.x+(p2.x-p0.x)/6, c1y=p1.y+(p2.y-p0.y)/6;
+    const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
+    d += `C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)} `;
+  }
+  return d + 'Z';
+}
+/* Открытая сглаженная кривая через точки маршрута (не замкнутая). */
+function smoothOpenPath(pts){
+  let d = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)} `;
+  for(let i=0;i<pts.length-1;i++){
+    const p0=pts[i===0?0:i-1], p1=pts[i], p2=pts[i+1], p3=pts[i+2<pts.length?i+2:i+1];
+    const c1x=p1.x+(p2.x-p0.x)/6, c1y=p1.y+(p2.y-p0.y)/6;
+    const c2x=p2.x-(p3.x-p1.x)/6, c2y=p2.y-(p3.y-p1.y)/6;
+    d += `C${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2.x.toFixed(1)},${p2.y.toFixed(1)} `;
+  }
+  return d;
+}
+function coastline(cx, cy, radii){
+  const step = 360/radii.length;
+  const pts = radii.map((r,i)=>{
+    const a = i*step*Math.PI/180;
+    return { x: cx + r*Math.cos(a), y: cy + r*0.72*Math.sin(a) };
+  });
+  return smoothClosedPath(pts);
+}
+
+function buildMap(){
+  while(mapViewport.firstChild) mapViewport.removeChild(mapViewport.firstChild);
+  const defs = document.createElementNS(NS,'defs');
+  const filter = document.createElementNS(NS,'filter');
+  filter.setAttribute('id','grainFilter'); filter.setAttribute('x','0'); filter.setAttribute('y','0'); filter.setAttribute('width','100%'); filter.setAttribute('height','100%');
+  const turb = document.createElementNS(NS,'feTurbulence');
+  turb.setAttribute('type','fractalNoise'); turb.setAttribute('baseFrequency','0.85'); turb.setAttribute('numOctaves','2'); turb.setAttribute('seed','7'); turb.setAttribute('stitchTiles','stitch');
+  const cm = document.createElementNS(NS,'feColorMatrix');
+  cm.setAttribute('type','matrix'); cm.setAttribute('values','0 0 0 0 0.55  0 0 0 0 0.47  0 0 0 0 0.35  0 0 0 0.7 0');
+  filter.append(turb, cm);
+  defs.appendChild(filter);
+
+  const marker = document.createElementNS(NS,'marker');
+  marker.setAttribute('id','routeArrow'); marker.setAttribute('viewBox','0 0 10 10');
+  marker.setAttribute('refX','8'); marker.setAttribute('refY','5');
+  marker.setAttribute('markerWidth','7'); marker.setAttribute('markerHeight','7');
+  marker.setAttribute('orient','auto-start-reverse');
+  const arrowPath = document.createElementNS(NS,'path');
+  arrowPath.setAttribute('class','route-arrow-fill'); arrowPath.setAttribute('d','M0,0 L10,5 L0,10 Z');
+  marker.appendChild(arrowPath);
+  defs.appendChild(marker);
+  mapViewport.appendChild(defs);
+
+  const waterBg = document.createElementNS(NS,'rect');
+  waterBg.setAttribute('class','map-bg'); waterBg.setAttribute('x',-400); waterBg.setAttribute('y',-400);
+  waterBg.setAttribute('width',1800); waterBg.setAttribute('height',1500);
+  mapViewport.appendChild(waterBg);
+
+  const grid = document.createElementNS(NS,'g');
+  for(let x=0; x<=1000; x+=100){
+    const l = document.createElementNS(NS,'line'); l.setAttribute('class','map-grid');
+    l.setAttribute('x1',x); l.setAttribute('y1',-400); l.setAttribute('x2',x); l.setAttribute('y2',1100);
+    grid.appendChild(l);
+  }
+  for(let y=0; y<=700; y+=100){
+    const l = document.createElementNS(NS,'line'); l.setAttribute('class','map-grid');
+    l.setAttribute('x1',-400); l.setAttribute('y1',y); l.setAttribute('x2',1400); l.setAttribute('y2',y);
+    grid.appendChild(l);
+  }
+  mapViewport.appendChild(grid);
+
+  const coastlines = [
+    {cx:560, cy:110, radii:[110,80,65,70,85,130,145,120,90,80,85,95]},   // северная Греция / Олимп
+    {cx:565, cy:335, radii:[150,190,140,175,120,200,155,180,130,165,150,135]}, // Пелопоннес
+    {cx:340, cy:290, radii:[70,55,60,45,75,60,50,65]},                    // Итака и Ионические острова
+    {cx:790, cy:175, radii:[100,80,90,65,120,95,80,105,90,85]},           // Анатолия / Троя
+  ];
+  coastlines.forEach(c=>{
+    const shadow = document.createElementNS(NS,'path');
+    shadow.setAttribute('class','map-land-shadow');
+    shadow.setAttribute('d', coastline(c.cx+5, c.cy+7, c.radii));
+    mapViewport.appendChild(shadow);
+    const land = document.createElementNS(NS,'path');
+    land.setAttribute('class','map-land');
+    land.setAttribute('d', coastline(c.cx, c.cy, c.radii));
+    mapViewport.appendChild(land);
+  });
+  // Крит: вытянутый с запада на восток остров, задаём точки вручную
+  const cretePts = [
+    {x:455,y:432},{x:500,y:412},{x:555,y:404},{x:610,y:410},{x:665,y:420},
+    {x:715,y:438},{x:695,y:460},{x:630,y:474},{x:560,y:478},{x:500,y:468},{x:465,y:452}
+  ];
+  const creteShadow = document.createElementNS(NS,'path'); creteShadow.setAttribute('class','map-land-shadow');
+  creteShadow.setAttribute('d', smoothClosedPath(cretePts.map(p=>({x:p.x+5,y:p.y+7}))));
+  mapViewport.appendChild(creteShadow);
+  const crete = document.createElementNS(NS,'path'); crete.setAttribute('class','map-land');
+  crete.setAttribute('d', smoothClosedPath(cretePts));
+  mapViewport.appendChild(crete);
+
+  const grain = document.createElementNS(NS,'rect');
+  grain.setAttribute('class','map-grain'); grain.setAttribute('x',-400); grain.setAttribute('y',-400);
+  grain.setAttribute('width',1800); grain.setAttribute('height',1500);
+  grain.setAttribute('filter','url(#grainFilter)');
+  mapViewport.appendChild(grain);
+
+  const title1 = document.createElementNS(NS,'text');
+  title1.setAttribute('class','map-title'); title1.setAttribute('x',30); title1.setAttribute('y',75);
+  title1.textContent = t('mapRealTitle');
+  mapViewport.appendChild(title1);
+  const sub1 = document.createElementNS(NS,'text');
+  sub1.setAttribute('class','map-subtitle'); sub1.setAttribute('x',30); sub1.setAttribute('y',92);
+  sub1.textContent = t('mapRealSubtitle');
+  mapViewport.appendChild(sub1);
+  const title2 = document.createElementNS(NS,'text');
+  title2.setAttribute('class','map-title'); title2.setAttribute('x',30); title2.setAttribute('y',600);
+  title2.textContent = t('mapLegendaryTitle');
+  mapViewport.appendChild(title2);
+  const sub2 = document.createElementNS(NS,'text');
+  sub2.setAttribute('class','map-subtitle'); sub2.setAttribute('x',30); sub2.setAttribute('y',617);
+  sub2.textContent = t('mapLegendarySubtitle');
+  mapViewport.appendChild(sub2);
+
+  const routePts = ROUTE_ORDER.map(id=>{ const l=locById[id]; return {x:l.x, y:l.y}; });
+  const routeD = smoothOpenPath(routePts);
+  const routeGlow = document.createElementNS(NS,'path');
+  routeGlow.setAttribute('class','map-route-glow'); routeGlow.setAttribute('d', routeD);
+  mapViewport.appendChild(routeGlow);
+  const routePath = document.createElementNS(NS,'path');
+  routePath.setAttribute('class','map-route'); routePath.setAttribute('d', routeD);
+  routePath.setAttribute('marker-mid','url(#routeArrow)');
+  routePath.setAttribute('marker-end','url(#routeArrow)');
+  mapViewport.appendChild(routePath);
+
+  function addLabelChip(parent, text, x, y, cls){
+    const w = text.length*6.4 + 10, h = 16;
+    const rect = document.createElementNS(NS,'rect');
+    rect.setAttribute('class','label-chip'); rect.setAttribute('rx',3);
+    rect.setAttribute('x', x-3); rect.setAttribute('y', y-11); rect.setAttribute('width', w); rect.setAttribute('height', h);
+    parent.appendChild(rect);
+    const label = document.createElementNS(NS,'text');
+    label.setAttribute('class', `pin-label ${cls||''}`); label.setAttribute('x', x); label.setAttribute('y', y);
+    label.textContent = text;
+    parent.appendChild(label);
+  }
+
+  LOCATIONS.forEach(loc=>{
+    const g = document.createElementNS(NS,'g');
+    g.setAttribute('class', `pin ${loc.kind}`);
+    g.setAttribute('transform', `translate(${loc.x},${loc.y})`);
+    g.dataset.id = loc.id;
+
+    if(loc.kind==='real'){
+      const body = document.createElementNS(NS,'path');
+      body.setAttribute('class','pin-body');
+      body.setAttribute('d','M0,2 C0,2 -11,-16 -11,-25 A11,11 0 1,1 11,-25 C11,-16 0,2 0,2 Z');
+      g.appendChild(body);
+      const dot = document.createElementNS(NS,'circle');
+      dot.setAttribute('class','pin-dot'); dot.setAttribute('cy',-25); dot.setAttribute('r',3.5);
+      g.appendChild(dot);
+      addLabelChip(g, loc.name, 16, 3, '');
+    } else {
+      const num = (loc.name.match(/^\d+/) || [''])[0];
+      const body = document.createElementNS(NS,'circle');
+      body.setAttribute('class','pin-body'); body.setAttribute('r', 9);
+      g.appendChild(body);
+      const numText = document.createElementNS(NS,'text');
+      numText.setAttribute('class','pin-num'); numText.setAttribute('y', 3.5);
+      numText.textContent = num;
+      g.appendChild(numText);
+      addLabelChip(g, loc.name.replace(/^\d+\.\s*/,''), 15, 4, 'legendary-label');
+    }
+    g.addEventListener('click', ()=>selectLocation(loc.id));
+    mapViewport.appendChild(g);
+    locPinEls[loc.id] = g;
+  });
+
+  const compass = document.createElementNS(NS,'g');
+  compass.setAttribute('class','compass'); compass.setAttribute('transform','translate(920,80)');
+  const ring1 = document.createElementNS(NS,'circle'); ring1.setAttribute('class','ring'); ring1.setAttribute('r',34);
+  const ring2 = document.createElementNS(NS,'circle'); ring2.setAttribute('class','ring'); ring2.setAttribute('r',24);
+  const needleV = document.createElementNS(NS,'path'); needleV.setAttribute('class','needle');
+  needleV.setAttribute('d','M0,-30 L7,0 L0,30 L-7,0 Z'); needleV.setAttribute('opacity','0.9');
+  const needleH = document.createElementNS(NS,'path'); needleH.setAttribute('class','needle');
+  needleH.setAttribute('d','M-30,0 L0,-7 L30,0 L0,7 Z'); needleH.setAttribute('opacity','0.5');
+  compass.append(ring1, ring2, needleV, needleH);
+  [[t('compassN'),0,-40],[t('compassS'),0,48],[t('compassE'),42,4],[t('compassW'),-42,4]].forEach(([letter,x,y])=>{
+    const t = document.createElementNS(NS,'text');
+    t.setAttribute('x',x); t.setAttribute('y',y); t.textContent = letter;
+    compass.appendChild(t);
+  });
+  mapViewport.appendChild(compass);
+
+  const frameOuter = document.createElementNS(NS,'rect');
+  frameOuter.setAttribute('class','map-frame-outer'); frameOuter.setAttribute('x',8); frameOuter.setAttribute('y',8);
+  frameOuter.setAttribute('width',984); frameOuter.setAttribute('height',684); frameOuter.setAttribute('rx',6);
+  mapViewport.appendChild(frameOuter);
+  const frameInner = document.createElementNS(NS,'rect');
+  frameInner.setAttribute('class','map-frame-inner'); frameInner.setAttribute('x',14); frameInner.setAttribute('y',14);
+  frameInner.setAttribute('width',972); frameInner.setAttribute('height',672); frameInner.setAttribute('rx',4);
+  mapViewport.appendChild(frameInner);
+
+  const cartouche = document.createElementNS(NS,'rect');
+  cartouche.setAttribute('class','map-cartouche'); cartouche.setAttribute('x',26); cartouche.setAttribute('y',628);
+  cartouche.setAttribute('width',280); cartouche.setAttribute('height',56); cartouche.setAttribute('rx',3);
+  mapViewport.appendChild(cartouche);
+  const cartoucheTitle = document.createElementNS(NS,'text');
+  cartoucheTitle.setAttribute('class','map-cartouche-title'); cartoucheTitle.setAttribute('x',38); cartoucheTitle.setAttribute('y',648);
+  cartoucheTitle.textContent = t('mapCartoucheTitle');
+  mapViewport.appendChild(cartoucheTitle);
+  const cartoucheText = document.createElementNS(NS,'text');
+  cartoucheText.setAttribute('class','map-cartouche-text'); cartoucheText.setAttribute('x',38); cartoucheText.setAttribute('y',664);
+  cartoucheText.textContent = t('mapCartoucheNote');
+  mapViewport.appendChild(cartoucheText);
+  const credit = document.createElementNS(NS,'text');
+  credit.setAttribute('class','map-credit'); credit.setAttribute('x',38); credit.setAttribute('y',676);
+  credit.textContent = t('mapCredit');
+  mapViewport.appendChild(credit);
+}
+const locPinEls = {};
+
+const mapPanZoom = makePanZoom(mapSvg, mapViewport);
+
+let selectedLocId = null;
+function selectLocation(id){
+  selectedLocId = id;
+  Object.values(locPinEls).forEach(el=>el.classList.remove('lit'));
+  const el = locPinEls[id]; if(el) el.classList.add('lit');
+  openLocationPanel(id);
+}
+
+function openLocationPanel(id){
+  const loc = locById[id];
+  panelBody.innerHTML = '';
+  const badge = document.createElement('span'); badge.className='badge';
+  badge.style.background = loc.kind==='real' ? 'var(--map-real)' : 'var(--map-legendary)';
+  badge.textContent = loc.kind==='real' ? t('locReal') : t('locLegendary');
+  const h2 = document.createElement('h2'); h2.textContent = locName(loc);
+  const bio = document.createElement('p'); bio.className='bio'; bio.textContent = locDesc(loc);
+  panelBody.append(badge, h2, bio);
+
+  const chars = charsByLoc[id] || [];
+  if(chars.length){
+    const h4 = document.createElement('h4'); h4.textContent = `${t('charsHerePrefix')} (${chars.length})`;
+    panelBody.appendChild(h4);
+    chars.forEach(ch=>{
+      const row = document.createElement('div'); row.className='rel-item';
+      const name = document.createElement('span'); name.textContent = nodeName(ch);
+      const type = document.createElement('span'); type.className='rtype'; type.textContent = nodeEp(ch);
+      row.append(name, type);
+      row.addEventListener('click', ()=>{ showTab('graph'); selectNode(ch.id); });
+      panelBody.appendChild(row);
+    });
+  }
+  panel.classList.add('open');
+}
+
+/* ---------- Переключение вкладок ---------- */
+let currentTab = 'graph';
+function showTab(which){
+  currentTab = which;
+  const isGraph = which==='graph';
+  document.getElementById('graphStage').style.display = isGraph ? '' : 'none';
+  document.getElementById('mapStage').style.display = isGraph ? 'none' : '';
+  document.getElementById('graphLegend').style.display = isGraph ? '' : 'none';
+  document.getElementById('mapLegend').style.display = isGraph ? 'none' : '';
+  document.getElementById('tabGraph').classList.toggle('active', isGraph);
+  document.getElementById('tabMap').classList.toggle('active', !isGraph);
+  document.getElementById('search').closest('.search-box').style.display = isGraph ? '' : 'none';
+  document.getElementById('filters').style.display = isGraph ? '' : 'none';
+  document.getElementById('hint').textContent = isGraph ? t('hintGraph') : t('hintMap');
+  if(!isGraph){ panel.classList.remove('open'); }
+}
+document.getElementById('tabGraph').addEventListener('click', ()=>showTab('graph'));
+document.getElementById('tabMap').addEventListener('click', ()=>showTab('map'));
+
+/* ---------- Переключение языка ---------- */
+function applyLangToChrome(){
+  document.documentElement.lang = lang;
+  document.title = t('pageTitle');
+  document.getElementById('appTitle').firstChild.textContent = t('appTitle');
+  document.getElementById('appSubtitle').textContent = t('appSubtitle');
+  document.getElementById('tabGraph').textContent = t('tabGraph');
+  document.getElementById('tabMap').textContent = t('tabMap');
+  document.getElementById('search').setAttribute('placeholder', t('searchPlaceholder'));
+  document.getElementById('themeBtn').title = t('themeBtnTitle');
+  const langBtn = document.getElementById('langBtn');
+  langBtn.title = t('langBtnTitle');
+  langBtn.textContent = lang==='en' ? 'RU' : 'EN';
+
+  ['legendGroupsTitle','legendGod','legendAchaean','legendTrojan','legendOther',
+   'legendRelationsTitle','relFamily','relPatron','relAlly','relLove','relEnemy',
+   'mapLegendTitle','mapLegendReal','mapLegendLegendary','mapLegendNote','graphCredit'].forEach(key=>{
+    const el = document.getElementById(key);
+    if(el) el.textContent = t(key);
+  });
+
+  GROUPS.forEach(gid=>{
+    chipLabelEls[gid].textContent = t('legend'+gid.charAt(0).toUpperCase()+gid.slice(1));
+  });
+
+  NODES.forEach(n=>{
+    const label = nodeEls[n.id].g.querySelector('.node-label');
+    if(label) label.textContent = nodeName(n);
+  });
+
+  showTab(currentTab);
+  buildMap();
+  if(selectedLocId && locPinEls[selectedLocId]) locPinEls[selectedLocId].classList.add('lit');
+  if(selected){ openPanel(selected); }
+  else if(selectedLocId){ openLocationPanel(selectedLocId); }
+}
+
+document.getElementById('langBtn').addEventListener('click', ()=>{
+  lang = lang==='en' ? 'ru' : 'en';
+  try{ localStorage.setItem('epicGraphLang', lang); }catch(e){}
+  applyLangToChrome();
+});
+applyLangToChrome();
+
+/* ---------- Тема ---------- */
+document.getElementById('themeBtn').addEventListener('click', ()=>{
+  const cur = document.documentElement.getAttribute('data-theme');
+  const next = cur==='dark' ? 'light':'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  try{ localStorage.setItem('epicGraphTheme', next); }catch(e){}
+});
+</script>
+</body>
+</html>
